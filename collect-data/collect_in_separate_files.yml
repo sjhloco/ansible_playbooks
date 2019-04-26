@@ -1,0 +1,29 @@
+---
+# Saves all Ansible variables/facts, one file for each command
+
+# Creates an empty file structure by first deleting then creating directories
+- name: "SYS >> Create the file structure"
+  hosts: localhost
+  tasks:
+  - file: path="/tmp/results" state=absent
+  - file: path="/tmp/results" state=directory
+
+# Runs show cmds using list of cmds from group_vars 
+- hosts: cisco     # Runs on all hosts in cisco or asa group
+  tasks:
+  - name: "NET >> Run device show cmds"
+    ios_command: 
+      commands: "{{ commands }}"   
+    register: cli_output
+
+  # Saves all variables per host in own file
+  - name: "NET >> Save Host Outputs"
+    copy:
+      # Copies the each output as specified by the loop element index number got from the loop 
+      content: "{{ cli_output.stdout[cmd_num] }}"
+      # Creates file_name using cmd list replaing all spaces
+      dest: /tmp/results/{{inventory_hostname}}_{{item|replace(' ','-')}}.txt
+    delegate_to: localhost
+    loop: "{{ commands }}"    # Loops through list of cmds
+    loop_control:
+      index_var: cmd_num    # Creates index number for each iteration

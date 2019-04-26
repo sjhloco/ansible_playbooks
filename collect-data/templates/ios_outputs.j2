@@ -1,0 +1,18 @@
+{# Name for the table taken from the first element of the commands list #}
+Output from {{ commands[0] }}			
+====================
+{# Which command output shown is taken from first element of the registered variable cli_output #}
+{{ cli_output.stdout[0] }}
+
+Output from {{ commands[1] }}
+==================================== 
+{{ cli_output.stdout[1] }}
+
+Output from {{ commands[2] }}			
+====================
+{{ cli_output.stdout[2] }}
+
+Second to last entry of {{ commands[2] }}
+==================================== 
+{# Nested lookup on the last element of the cli_output.stdout_lines output #}
+{{ cli_output.stdout_lines[2][-2] }}

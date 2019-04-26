@@ -1,0 +1,24 @@
+---
+# Saves all Ansible variables/facts, one file all each commands
+
+# Creates an empty file structure by first deleting then creating directories
+- name: "SYS >> Create the file structure"
+  hosts: localhost
+  tasks:
+  - file: path="/tmp/results" state=absent
+  - file: path="/tmp/results" state=directory
+
+# Runs show cmds using list of cmds from group_vars 
+- hosts: cisco     # Runs on all hosts in cisco or asa group
+  tasks:
+  - name: "NET >> Run device show cmds"
+    ios_command: 
+      commands: "{{ commands }}"   
+    register: cli_output
+
+  # Uses jinja2 template to create one file of all outputs on a per-host basis
+  - name: "NET >> Save Host Outputs"
+    template:
+      src: ios_outputs.j2
+      dest: "/tmp/results/{{inventory_hostname}}.txt" 
+    delegate_to: localhost

@@ -1,0 +1,6 @@
+---
+commands:
+  - show version
+  - show ip int brief
+  - show mac address-table
+...
