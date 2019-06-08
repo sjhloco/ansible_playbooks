@@ -1,0 +1,139 @@
+
+===1. Create a Resource Group (can use existing)
+
+az group create --name stesworld --location 'West Europe'
+
+
+
+===2. Create a virtual network (can use existing) and a gateway subnet. 
+-virtualNetwork: Is a supernet that you create the below subnets within
+-subnet: is what the will be in the interesting traffic fro the VPN tunnel.
+-GatewaySubnet: Is the subnet (like p-t-p link) between Azure VPN gateway and the Virtual Network used by the VPN gateway services. 
+It is possible to create a gateway subnet as small as /29, recommended /27 or /28 to accommodate possible future configurations.
+
+az network vnet create --name NT-vnet1 --resource-group stesworld --address-prefix 10.20.0.0/16 --location 'West Europe' --subnet-name NT-vnet1-mgmt --subnet-prefix 10.20.10.0/24
+az network vnet subnet create --address-prefix 10.20.255.0/28 -n GatewaySubnet -g stesworld --vnet-name NT-vnet1
+
+-To create another subnet:
+az network vnet subnet create --address-prefix 10.20.20.0/24 -n NT-vnet1-data -g stesworld --vnet-name NT-vnet1
+
+az network vnet subnet list --vnet-name AZ-vnet1 --resource-group stesworld
+az network vnet subnet show --name AZ-mgmt --resource-group stesworld --vnet-name AZ-vnet1 
+
+
+
+===3. Create the local network gateway
+Refers to the remote site, stores the VPN peer IP and the interesting traffic at the remote site.
+Your VPN device cannot be located behind a NAT, as azure doesnt support NAT-T
+
+az network local-gateway create --gateway-ip-address 86.155.8.91 -n NT-vpn-home-rm -g stesworld --local-address-prefixes 10.10.10.0/24 10.10.20.0/24
+
+
+
+===4. Request a Public IP address (variable)
+You first request the IP address resource, and then refer to it when creating your virtual network gateway. 
+You cannot request a Static Public IP assignment, however the only time it changes is when the gateway is deleted and re-created.
+
+az network public-ip create -n NT-vpn-home-ip -g stesworld --allocation-method Dynamic
+
+
+
+===5. Create the VPN gateway (can take up to 45 minutes or more to complete.)
+Links public IP and GatewaySubnet (pulls this from the VirtualNetwork)
+If add '--no-wait' to end you don't see any feedback or output allowing the gateway to create in the background.
+
+az network vnet-gateway create -n NT-vpn-home-az --public-ip-address NT-vpn-home-ip -g stesworld --vnet NT-vnet1 --gateway-type Vpn --vpn-type PolicyBased --sku Basic
+
+
+
+===6. Configure the remote VPN device
+As is policy-based can only have one network at AZURE over as I could never tunnels for both networks up at once. 
+Doubt have this problem with route-based VPN tunnels would never keep 2 tunnels up.
+
+az network public-ip list --resource-group stesworld --output table				To get the azure public IP, however didnt work?
+
+object-group network HM-to-AZ-LOCAL
+ network-object 10.10.10.0 255.255.255.0
+ network-object 10.10.20.0 255.255.255.0
+object-group network HM-to-AZ-REMOTE
+ network-object 10.20.0.0 255.255.0.0
+
+access-list HM-to-AZ-VPN extended permit ip object-group HM-to-AZ-LOCAL object-group HM-to-AZ-REMOTE
+access-list transit line 20 permit ip object-group HM-to-AZ-REMOTE object-group HM-to-AZ-LOCAL
+nat (any,transit) source static HM-to-AZ-LOCAL HM-to-AZ-LOCAL  destination static HM-to-AZ-REMOTE HM-to-AZ-REMOTE
+
+crypto ikev1 policy 30
+ authentication pre-share
+ encryption aes-256
+ hash sha
+ group 2
+ lifetime 28800
+
+crypto ipsec ikev1 transform-set AZURE-TRANSFORM  esp-aes-256 esp-sha-hmac
+crypto map transit_map 20 match address HM-to-AZ-VPN
+crypto map transit_map 20 set ikev1 transform-set AZURE-TRANSFORM
+crypto map transit_map 20 set security-association lifetime seconds 3600
+crypto map transit_map 20 set security-association lifetime kilobytes 102400000
+crypto map transit_map 20 set peer 40.114.145.134
+
+tunnel-group 40.114.145.134 type ipsec-l2l
+tunnel-group 40.114.145.134 ipsec-attribute
+ ikev1 pre-shared-key in33d46.Sec46!VPNyyA3Z5
+
+access-list stecap extended permit ip host 52.232.122.52 any4 
+access-list stecap extended permit ip any4 host 52.232.122.52 
+no access-list stecap extended permit ip host 13.95.165.32 any4 
+no access-list stecap extended permit ip any4 host 13.95.165.32 
+
+These are recommendations from Azure. 
+sysopt connection tcpmss 1350				Drops the maximum segment size to 1350 (by default is 1380) 
+sysopt connection preserve-vpn-flows			Keeps the TCP session information even if the VPN tunnel drops.
+
+
+
+===7. Create the VPN connection
+Link the VPN Gateway (vnet-gateway1) - Azure Public IP and gateway subnet
+Link the local network gateway (local-gateway2) - Remote site public IP and remote subnets
+
+az network vpn-connection create --name NT-vpn-home-conn --resource-group stesworld --vnet-gateway1 NT-vpn-Home-az -l 'West Europe' --shared-key 'in33d46.Sec46!VPNyyA3Z5' --local-gateway2 NT-vpn-home-rm
+
+Check the connection. !!!! Be patient, can take 5 mins to work !!!!
+az network vpn-connection show --name AZ-to-HM-VPN --resource-group stesworld
+
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++ EDIT ALREADY BUILT TUNNEL +++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+===8. Modify the remote site interesting traffic or peer IP
+
+If you want to change the gateway IP address (remote peer) or add/ remove IP address prefixes at the remote site you don't need to delete the VPN gateway, This results in some downtime for your VPN connection. 
+Each time you make a change, the entire list of prefixes must be specified, not just the prefixes that you want to change. 
+
+az network local-gateway update --gateway-ip-address 86.145.94.158 --name NT-vpn-home-rm --resource-group stesworld
+az network local-gateway update --local-address-prefixes 10.10.10.0/24 10.10.20.0/24 --name NT-vpn-home-rm --connection-name AZ-to-HM-VPN
+
+
+
+===9. CANT update the Azure local site interesting traffic or peer IP of a vpn type policy-based 
+
+-First delete the vpn-connection (holds renmote-site details) and vnet-gateway holds Azure-details
+az network vpn-connection delete -n AZ-to-HM-VPN1 -g stesworld
+az network vnet-gateway delete -n AZ-VPN-GW1 -g stesworld
+
+-Create new vnet-gateway (remember the virtual-network must have a GatewaySubnet) 
+az network vnet-gateway create -n AZ-VPN-GW1 --public-ip-address AZ-VPN-GWIP -g stesworld --vnet stesworld_london --gateway-type Vpn --vpn-type PolicyBased --sku Basic
+
+-Change interesting traffic at remote site and the azure GW IP
+object-group network HM-to-AZ-REMOTE
+ no network-object 10.20.0.0 255.255.0.0
+ network-object 172.60.0.0 255.255.0.0
+
+no crypto map transit_map 20 set peer 40.114.145.134
+clear config tunnel-group 40.114.145.134
+
+tunnel-group 52.232.67.194 type ipsec-l2l
+tunnel-group 52.232.67.194 ipsec-attribute
+ ikev1 pre-shared-key in33d46.Sec46!VPNyyA3Z5
+crypto map transit_map 20 set peer 52.232.67.194
+

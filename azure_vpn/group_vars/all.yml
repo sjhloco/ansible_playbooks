@@ -1,0 +1,19 @@
+---
+ansible_user: "admin"
+ansible_ssh_pass: "ansible"
+
+az_region: westus
+rg_name: stesworld
+
+# Network Variables
+vn_name: NT-vnet1
+vn_pfx: 10.20.0.0/16
+
+subnets: {
+  network1_name: NT-vnet1-mgmt,
+  network1_pfx: 10.20.10.0/24,
+  network2_name: NT-vnet1-data,
+  network2_pfx: 10.20.20.0/24,
+  gateway_name: GatewaySubnet,
+  gateway_pfx: 10.20.255.0/28
+}
