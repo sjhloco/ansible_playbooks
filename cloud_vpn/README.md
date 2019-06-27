@@ -11,18 +11,18 @@ Azure is missing Ansible modules for creating the *Local Network Gateway* and *V
 <br/>*Redhat: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-apt?view=azure-cli-latest*
 <br/>*Azure: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-yum?view=azure-cli-latest*
 2. Create the Service Principal Credentials that are used for authentication by the Azure modules.
-<br/>*az ad sp create-for-rbac --name Ansible                            Created APP_ID called Ansible*
-<br/>*az login --service-principal --username APP_ID --password PASSWORD --tenant TENANT_ID       To test*
+<br/>*az ad sp create-for-rbac --name Ansible                                       Created APP_ID called Ansible*
+<br/>*az login --service-principal --username APP_ID --password PASSWORD --tenant TENANT_ID               To test*
 3. Get the Azure SubscriptionID (the 2nd dictionary key *id*).
 <br/>*az account show*
 4. In the home directory of the Ansible host create an Azure directory and credentials file with the following details.
 <br/>*mkdir ~/.azure*
 <br/>*vi ~/.azure/credentials*
 <br/>*[default]*
-<br/>*subscription_id=<your-subscription_id>*
-<br/>*client_id=<security-principal-appid>*
-<br/>*secret=<security-principal-password>*
-<br/>*tenant=<security-principal-tenant>*
+<br/>*subscription_id=your-subscription_id*
+<br/>*client_id=security-principal-appid*
+<br/>*secret=security-principal-password*
+<br/>*tenant=security-principal-tenant*
 5. Remove a conflicting Python cryptography package and install the required Ansible Azure packages.
 <br/>*sudo pip uninstall -y cryptography*
 <br/>*pip install ansible[azure] --user*
