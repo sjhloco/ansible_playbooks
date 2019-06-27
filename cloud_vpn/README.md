@@ -11,8 +11,8 @@ Azure is missing Ansible modules for creating the *Local Network Gateway* and *V
 <br/>*Redhat: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-apt?view=azure-cli-latest*
 <br/>*Azure: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-yum?view=azure-cli-latest*
 2. Create the Service Principal Credentials that are used for authentication by the Azure modules.
-<br/>*az ad sp create-for-rbac --name Ansible				                   Created APP_ID called Ansible*
-<br/>*az login --service-principal --username APP_ID --password PASSWORD --tenant TENANT_ID		   To test*
+<br/>*az ad sp create-for-rbac --name Ansible                            Created APP_ID called Ansible*
+<br/>*az login --service-principal --username APP_ID --password PASSWORD --tenant TENANT_ID       To test*
 3. Get the Azure SubscriptionID (the 2nd dictionary key *id*).
 <br/>*az account show*
 4. In the home directory of the Ansible host create an Azure directory and credentials file with the following details.
@@ -36,7 +36,7 @@ The playbook can be run with the following tags:
 
 **--tag destroy:** Only removes the configuration specific to to this VPN tunnel, so wont remove any of the AZ vnet/subnets or the ASA ikev2_policy/ipsec_proposal.
 <br/>AZ: *Public_ip, local_network_gateway, VPN_gateway, vpn_connection (and ipsec_policy)*
-<br/>AZ: *Crypto_map_100, ACLs, object-groups, nonat, tunnel-group*
+<br/>ASA: *Crypto_map_100, ACLs, object-groups, nonat, tunnel-group*
  
 **--tag vpn_down:**	Deletes the components to break the VPN (more importantly the elements that Azure bills you for).
 <br/>AZ: *VPN_gateway, vpn_connection (including ipsec_policy)*
