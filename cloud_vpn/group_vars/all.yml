@@ -1,0 +1,57 @@
+---
+#ansible_python_interpreter: "/usr/bin/python3.7"         # Ubuntu
+ansible_python_interpreter: "/usr/local/bin/python3.7"    # redhat
+
+#Names of the VPN sites, so the cloud provider (i.e Azure) and the remote location (i.e home))
+cl_provider: az
+rm_location: hm
+
+# Cloud Provider base Parameters
+cl_region: westeurope
+rg_name: stesworld
+vn_name: NT-vnet1
+vn_pfx: 10.20.0.0/16
+
+# Cloud-side VPN variables - Interesting traffic and peer
+public_ip_name: NT-vpn-{{ rm_location }}-ip
+cl_gateway: NT-vpn-{{ rm_location }}-{{ cl_provider }} 
+cl_subnets: {
+  NT-vnet1-mgmt: 10.20.10.0/24,
+  NT-vnet1-data: 10.20.20.0/24
+}  
+gw_subnet_name: GatewaySubnet
+gw_subnet_prfx: 10.20.255.0/28
+
+# Remote-side VPN variables - Interesting traffic
+rm_gateway: NT-vpn-{{ rm_location }}-rm
+rm_subnets: {
+  NT-vl10-mgmt: 10.10.10.0/24,
+  NT-vl20-data: 10.10.20.0/24 
+}
+vpn_connection: NT-vpn-{{ rm_location }}-conn    # Azures VPN connection links peers and forms the VPN
+
+# Unhash if want to set a static address rather than dynamically creating one 
+#rm_public_ip: 86.144.174.117
+
+# VPN encryption (AES) and hashing (SHA) algorithms
+p1_encr: 256
+p1_hash: 384
+dh: 24
+p1_life: 86400
+
+p2_encr: 256
+p2_hash: 1
+pfs: 24
+sa_life: 14400
+sa_size: 102400000
+
+psk: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          63623436623731396364626134633533306637353230326238666230373864613566623538363532
+          6330353663343961383064366365373035663639316466320a623039326632396431666264383065
+          66653335613432393335663635316534643363663235333631333133666335343636363861623262
+          3232623263363461390a663533376234393235313163303665633832346439343663623666343630
+          61383133623230373939393765353038666331663930316338383266656530313865
+
+# Required to stop playbook failing if it doenst exist. Will be overridden by psk if actually exists
+psk1: dummy

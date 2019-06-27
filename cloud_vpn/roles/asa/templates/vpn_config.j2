@@ -1,0 +1,42 @@
+
+object-group network {{ cl_provider.upper() }}_LOCAL
+{% for x in rm_subnets.values() %}
+ network-object {{ x|ipaddr('network') }} {{ x|ipaddr('netmask') }}
+{% endfor %}
+
+object-group network {{ cl_provider.upper() }}_REMOTE
+{% for y in cl_subnets.values() %}
+ network-object {{ y|ipaddr('network') }} {{ y|ipaddr('netmask') }}
+{% endfor %}
+
+access-list {{ vpn_interface }} extended permit ip object-group {{ cl_provider.upper() }}_REMOTE object-group {{ cl_provider.upper() }}_LOCAL
+access-list {{ cl_provider.upper() }}_VPN extended permit ip object-group {{ cl_provider.upper() }}_LOCAL object-group {{ cl_provider.upper() }}_REMOTE
+nat (any,{{ vpn_interface }}) 1 source static {{ cl_provider.upper() }}_LOCAL {{ cl_provider.upper() }}_LOCAL destination static {{ cl_provider.upper() }}_REMOTE {{ cl_provider.upper() }}_REMOTE
+sysopt connection tcpmss 1350
+
+crypto isakmp identity address
+crypto ikev2 enable {{ vpn_interface }}
+crypto ikev2 policy {{ vpn_index }}
+ encryption aes-{{ p1_encr }} 
+ integrity sha{{ p1_hash }}
+ prf sha{{ p1_hash }}
+ group {{ dh }}
+ lifetime seconds {{ p1_life }}
+
+crypto isakmp identity address
+crypto ipsec ikev2 ipsec-proposal AES-{{ p2_encr }} 
+ protocol esp encryption aes-{{ p2_encr }}
+ protocol esp integrity sha-{{ p2_hash }}  
+
+crypto map {{ crypto_map }} interface {{ vpn_interface }}
+crypto map {{ crypto_map }} {{ vpn_index }} match address {{ cl_provider.upper() }}_VPN
+crypto map {{ crypto_map }} {{ vpn_index }} set peer {{ hostvars.localhost.cl_public_ip }} 
+crypto map {{ crypto_map }} {{ vpn_index }} set pfs group{{ pfs }}
+crypto map {{ crypto_map }} {{ vpn_index }} set ikev2 ipsec-proposal AES-{{ p2_encr }}
+crypto map {{ crypto_map }} {{ vpn_index }} set security-association lifetime seconds {{ sa_life }} 
+crypto map {{ crypto_map }} {{ vpn_index }} set security-association lifetime kilobytes {{ sa_size }}
+
+tunnel-group {{ hostvars.localhost.cl_public_ip }} type ipsec-l2l
+tunnel-group {{ hostvars.localhost.cl_public_ip }} ipsec-attributes
+ ikev2 remote-authentication pre-shared-key {{ psk }}
+ ikev2 local-authentication  pre-shared-key {{ psk }}

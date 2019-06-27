@@ -9,3 +9,6 @@ Contains all playbooks created for small tasks
 2. backup_configs<br />
 -backup_with_cmd_mod.yml: Backup ASAs, IOS and NXOS using Ansible command modules in seperate plays<br />
 -backup_with_napalm.yml: Backup ASAs, IOS and NXOS using napalm and F5 using bigip module<br />
+
+3. cloud_vpn<br />
+-playbook_cloud_vpn.yml: Build a site-to-site VPN between Azure and a Cisco ASA5505

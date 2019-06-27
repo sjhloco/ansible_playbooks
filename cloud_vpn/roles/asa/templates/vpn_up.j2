@@ -1,0 +1,6 @@
+crypto map transit_map {{ vpn_index }} set peer {{ hostvars.localhost.cl_public_ip }} 
+
+tunnel-group {{ hostvars.localhost.cl_public_ip }} type ipsec-l2l
+tunnel-group {{ hostvars.localhost.cl_public_ip }} ipsec-attributes
+ ikev2 remote-authentication pre-shared-key {{ psk }}
+ ikev2 local-authentication  pre-shared-key {{ psk }}

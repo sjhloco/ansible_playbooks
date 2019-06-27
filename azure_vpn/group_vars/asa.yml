@@ -1,5 +1,0 @@
----
-commands:
-  - show version
-  - show int ip brief
-  - show arp
