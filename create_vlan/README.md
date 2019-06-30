@@ -1,1 +1,1 @@
-Creates VLANs on IOS devices and validates htat they have been added
+Creates VLANs on IOS devices and validates that they have been added
