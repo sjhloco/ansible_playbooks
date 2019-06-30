@@ -1,7 +1,6 @@
 ---
-git_repo: git@github.com:sjhloco/ip_auto_lab.git
-repo_path: /tmp/ip_auto_lab
 ansible_python_interpreter: "/usr/bin/python3.7" 
+config_dir: /configs
 
 creds_all:
   hostname: "{{ ansible_host|default(inventory_hostname) }}"

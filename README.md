@@ -12,3 +12,6 @@ Contains all playbooks created for small tasks
 
 3. cloud_vpn<br />
 -playbook_cloud_vpn.yml: Build a site-to-site VPN between Azure and a Cisco ASA5505
+
+3. create_vlan<br />
+-playbook_create_vlans.yml: Build and verify VLANs on IOS
