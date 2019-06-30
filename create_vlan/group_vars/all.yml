@@ -1,0 +1,8 @@
+---
+ansible_python_interpreter: "/usr/bin/python3.7" 
+config_dir: ~/configs
+
+creds_all:
+  hostname: "{{ ansible_host|default(inventory_hostname) }}"
+  username: admin
+  password: ansible
