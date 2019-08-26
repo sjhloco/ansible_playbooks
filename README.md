@@ -15,3 +15,6 @@ Contains all playbooks created for small tasks
 
 4. create_vlan<br />
 -playbook_create_vlans.yml: Build and verify VLANs on IOS
+
+5. network_state_report<br />
+-playbook_main.yml: Generates tables of device state (asa, nxos, ios, bigip) for network elements (Interfaces, MACs, ARPs, VPN, OSPF, BGP) and builds a report
