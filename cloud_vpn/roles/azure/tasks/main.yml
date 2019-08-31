@@ -3,190 +3,186 @@
 
 ######### Create all the Azure elements of the VPN #########
 # 1a. Create a Resource Group - Container in a geographical location that holds everything
-- name: "CL  >> Creating resource group"
+- name: CL  >> Creating resource group
   azure_rm_resourcegroup:
     name: "{{ rg_name }}"
     location: "{{ cl_region }}"
     state: present
   tags: deploy
-# 1b. Create public IP 
-- name: "CL >> Creating Public IP address"
+# 1b. Create public IP
+- name: CL >> Creating Public IP address
   azure_rm_publicipaddress:
     resource_group: "{{ rg_name }}"
     name: "{{ public_ip_name }}"
-    allocation_method: Dynamic 
+    allocation_method: Dynamic
     state: present
   tags: deploy
 
 # 2a. Create a virtual network (supernet) that holds all subnets and is the interesting traffic for the VPN
-- name: "CL  >> Creating Virtual Network"
+- name: CL  >> Creating Virtual Network
   azure_rm_virtualnetwork:
     name: "{{ vn_name }}"
     resource_group: "{{ rg_name }}"
     address_prefixes_cidr: "{{ vn_pfx }}"
-    state: present 
+    state: present
   tags: deploy
 # 2b. Create subnets within the superset (optional)
-- name: "CL  >> Creating subnets"
+- name: CL  >> Creating subnets
   azure_rm_subnet:
     name: "{{ item.key }}"
     virtual_network_name: "{{ vn_name }}"
     resource_group: "{{ rg_name }}"
     address_prefix_cidr: "{{ item.value }}"
-    state: present 
-  loop: "{{ cl_subnets|dict2items }}"  
+    state: present
+  loop: "{{ cl_subnets|dict2items }}"
   tags: deploy
 # 2c. Create gateway subnet (p-t-p link VPN gateway >to> Virtual Network)
-- name: "CL  >> Creating gateway subnet"
+- name: CL  >> Creating gateway subnet
   azure_rm_subnet:
     name: "{{ gw_subnet_name }}"
     virtual_network_name: "{{ vn_name }}"
     resource_group: "{{ rg_name }}"
     address_prefix_cidr: "{{ gw_subnet_prfx }}"
-    state: present    
+    state: present
   tags: deploy
 
-# 3. Create the Azure VPN gateway - Links public IP and GatewaySubnet 
-- name: "CL >> Creating virtual network gateway (vpn peer) - Be  patient it takes a while"
+# 3. Create the Azure VPN gateway - Links public IP and GatewaySubnet
+- name: CL >> Creating virtual network gateway (vpn peer) - Be  patient it takes a while
   azure_rm_virtualnetworkgateway:
     resource_group: "{{ rg_name }}"
     name: "{{ cl_gateway }}"
     ip_configurations:
       - name: ipconfig
-        private_ip_allocation_method: Dynamic 
+        private_ip_allocation_method: Dynamic
         public_ip_address_name: "{{ public_ip_name }}"
         subnet: "{{ gw_subnet_name }}"
     virtual_network: "{{ vn_name }}"
     vpn_type: route_based
-    state: present 
+    state: present
   tags: [deploy, vpn_up]
 
 # 4. Login to AZ CLI as no modules for rest of cmds
 - set_fact:
-    az_creds: "{{ lookup('file', '~/.azure/credentials') }}" 
+    az_creds: "{{ lookup('file', '~/.azure/credentials') }}"
   check_mode: no
-  tags: [deploy, destroy, vpn_down, vpn_up]  
+  tags: [deploy, destroy, vpn_down, vpn_up]
 - name: AZ >> AZ CLI login
   command: "{{ az_creds | az_login }}"
   check_mode: no
-  tags: [deploy, destroy, vpn_down, vpn_up] 
+  tags: [deploy, destroy, vpn_down, vpn_up]
 
 # 5. Create the local network gateway - stores the VPN peer IP and the interesting traffic at the remote site
-- block:  # check if the local network gateway exists
-  - name: "CL >> Checking if local network gateway exists"
-    shell: az network local-gateway list -g {{ rg_name }}
-    register: local_gw  
-  - set_fact:
-      local_gw_exists: "{{ local_gw.stdout|check_az_show(rm_gateway) }}"
-  tags: [deploy, vpn_up]       
-- block:  # Create facts from local gateway for remote peer and subnets
-  - name: "{{ cl_provider.upper() }} >> Creating facts from local gateway output"
-    shell: az network local-gateway show -n {{ rm_gateway }} -g {{ rg_name }}
-    register: gateway
-  - set_fact:
-      cfg_peer: "{{ (gateway.stdout | from_json).gatewayIpAddress }}"  
-  - set_fact:
-      cfg_prfxs: "{{ (gateway.stdout | from_json).localNetworkAddressSpace.addressPrefixes }}"  
-  when: local_gw_exists|bool  
-  tags: [deploy, vpn_up]   
-# Updates local gateway if remote peer or subnet changes 
+- block: # check if the local network gateway exists
+    - name: CL >> Checking if local network gateway exists
+      shell: az network local-gateway list -g {{ rg_name }}
+      register: local_gw
+    - set_fact:
+        local_gw_exists: "{{ local_gw.stdout|check_az_show(rm_gateway) }}"
+  tags: [deploy, vpn_up]
+- block: # Create facts from local gateway for remote peer and subnets
+    - name: CL >> Creating facts from local gateway output
+      shell: az network local-gateway show -n {{ rm_gateway }} -g {{ rg_name }}
+      register: gateway
+    - set_fact:
+        cfg_peer: "{{ (gateway.stdout | from_json).gatewayIpAddress }}"
+    - set_fact:
+        cfg_prfxs: "{{ (gateway.stdout | from_json).localNetworkAddressSpace.addressPrefixes }}"
+  when: local_gw_exists|bool
+  tags: [deploy, vpn_up]
+# Updates local gateway if remote peer or subnet changes
 - name: CL >> Updating local gateway (remote peer and subnets)
   command: >
-           az network local-gateway update
-           --name {{ rm_gateway }}
-           --resource-group {{ rg_name }}
-           --gateway-ip-address {{ hostvars.localhost.rm_public_ip }}
-           --local-address-prefixes {{ rm_subnets|rm_prfxs }}
-  when: | 
-        local_gw_exists|bool and
-        (cfg_peer != rm_public_ip or
-        cfg_prfxs | symmetric_difference(rm_subnets|list_rm_prfxs))
-  tags: [deploy, vpn_up]      
-# Creates the local gateway if it doesnt exist    
+    az network local-gateway update
+    --name {{ rm_gateway }}
+    --resource-group {{ rg_name }}
+    --gateway-ip-address {{ hostvars.localhost.rm_public_ip }}
+    --local-address-prefixes {{ rm_subnets|rm_prfxs }}
+  when: |
+    local_gw_exists|bool and
+    (cfg_peer != rm_public_ip or
+    cfg_prfxs | symmetric_difference(rm_subnets|list_rm_prfxs))
+  tags: [deploy, vpn_up]
+# Creates the local gateway if it doesnt exist
 - name: AZ >> Creating local gateway (remote peer and subnets)
   command: >
-           az network local-gateway create
-           --name {{ rm_gateway }}
-           --resource-group {{ rg_name }}
-           --gateway-ip-address {{ hostvars.localhost.rm_public_ip }}
-           --local-address-prefixes {{ rm_subnets|rm_prfxs }} 
-  when: not local_gw_exists|bool              
-  tags: [deploy, vpn_up]         
+    az network local-gateway create
+    --name {{ rm_gateway }}
+    --resource-group {{ rg_name }}
+    --gateway-ip-address {{ hostvars.localhost.rm_public_ip }}
+    --local-address-prefixes {{ rm_subnets|rm_prfxs }}
+  when: not local_gw_exists|bool
+  tags: [deploy, vpn_up]
 
 # 6. Create VPN connection - Link the VPN Gateway (AZ peer and subnets) to the local network gateway (remote peer and subnets)
-- block:  # check if the vpn-conn exists
-  - name: "CL >> Checking if VPN connection exists"
-    shell: az network vpn-connection list -g {{ rg_name }}
-    register: vpn_conns
-  - set_fact:
-      vpn_conn_exists: "{{ vpn_conns.stdout|check_az_show(vpn_connection) }}"
-  tags: [deploy, vpn_up]  
-- block:    # Gets PSK from the vpn-conn  
-  - name: "CL >> Getting current PSK"
-    command: az network vpn-connection show -n {{ vpn_connection }} -g {{ rg_name }}
-    register: psk_value
-  - set_fact:
-      psk1: "{{ (psk_value.stdout | from_json).sharedKey }}"  
+- block: # check if the vpn-conn exists
+    - name: CL >> Checking if VPN connection exists
+      shell: az network vpn-connection list -g {{ rg_name }}
+      register: vpn_conns
+    - set_fact:
+        vpn_conn_exists: "{{ vpn_conns.stdout|check_az_show(vpn_connection) }}"
+  tags: [deploy, vpn_up]
+- block: # Gets PSK from the vpn-conn
+    - name: CL >> Getting current PSK
+      command: az network vpn-connection show -n {{ vpn_connection }} -g {{ rg_name }}
+      register: psk_value
+    - set_fact:
+        psk1: "{{ (psk_value.stdout | from_json).sharedKey }}"
   when: vpn_conn_exists|bool
   tags: [deploy, vpn_up]
 # Updates the PSK if it is different
-- name: "{{ CL >> Updating the PSK"
+- name: CL >> Updating the PSK
   shell: az network vpn-connection update -n {{ vpn_connection }} -g {{ rg_name }} --shared-key {{ psk }}
   when: vpn_conn_exists|bool and (psk1 != psk)
   tags: [deploy, vpn_up]
 # Creates the VPN connection if it doesnt already exist
-- name: "CL >> Creating VPN connection (link AZ and remote peer)"
+- name: CL >> Creating VPN connection (link AZ and remote peer)
   command: >
-           az network vpn-connection create
-           --name {{ vpn_connection }}     
-           --resource-group {{ rg_name }}    
-           --vnet-gateway1 {{ cl_gateway }}
-           --location {{ cl_region }}
-           --shared-key {{ psk }}
-           --local-gateway2 {{ rm_gateway }}
+    az network vpn-connection create
+    --name {{ vpn_connection }}
+    --resource-group {{ rg_name }}
+    --vnet-gateway1 {{ cl_gateway }}
+    --location {{ cl_region }}
+    --shared-key {{ psk }}
+    --local-gateway2 {{ rm_gateway }}
   when: not vpn_conn_exists|bool
   tags: [deploy, vpn_up]
 
 # 7. Create VPN connection IPSEC policy - Holds all IPSEC algorithms
-- name: "CL >> Creating VPN connection IPSEC policy"
+- name: CL >> Creating VPN connection IPSEC policy
   command: >
-           az network vpn-connection ipsec-policy add 
-           --resource-group {{ rg_name }}              
-           --connection-name {{ vpn_connection }}             
-           --dh-group DHGroup{{ dh }}
-           --ike-encryption AES{{ p1_encr }} 
-           --ike-integrity SHA{{ p1_hash }} 
-           --ipsec-encryption AES{{ p2_encr }}  
-           --ipsec-integrity SHA{{ p2_hash }} 
-           --pfs-group PFS{{ pfs }} 
-           --sa-lifetime {{ sa_life }}  
-           --sa-max-size {{ sa_size }} 
-  when: not vpn_conn_exists|bool         
-  notify: "az_logout"        
+    az network vpn-connection ipsec-policy add
+    --resource-group {{ rg_name }}
+    --connection-name {{ vpn_connection }}
+    --dh-group DHGroup{{ dh }}
+    --ike-encryption AES{{ p1_encr }}
+    --ike-integrity SHA{{ p1_hash }}
+    --ipsec-encryption AES{{ p2_encr }}
+    --ipsec-integrity SHA{{ p2_hash }}
+    --pfs-group PFS{{ pfs }}
+    --sa-lifetime {{ sa_life }}
+    --sa-max-size {{ sa_size }}
+  when: not vpn_conn_exists|bool
+  notify: az_logout
   tags: [deploy, vpn_up]
 
 ########## Used to delete the VPN or bring down elements that are chargable ##########
 
-# Deletes the connection, local gateway (remote site), VPN gateway and public IP. 
-- name: "CL >> Deleting VPN connection elements - Be patient it takes a while"
+# Deletes the connection, local gateway (remote site), VPN gateway and public IP.
+- name: CL >> Deleting VPN connection elements - Be patient it takes a while
   command: "{{ item }}"
   loop:
-    - az network vpn-connection delete --name {{ vpn_connection }} --resource-group {{ rg_name }} 
+    - az network vpn-connection delete --name {{ vpn_connection }} --resource-group {{ rg_name }}
     - az network local-gateway delete --name {{ rm_gateway }} --resource-group {{ rg_name }}
-    - az network vnet-gateway delete --name {{ cl_gateway }} --resource-group {{ rg_name }} 
-    - az network public-ip delete --name {{ public_ip_name }} --resource-group {{ rg_name }} 
-  notify: "az_logout"          
+    - az network vnet-gateway delete --name {{ cl_gateway }} --resource-group {{ rg_name }}
+    - az network public-ip delete --name {{ public_ip_name }} --resource-group {{ rg_name }}
+  notify: az_logout
   tags: destroy
 
-# Deletes the connection and VPN gateway 
-- name: "CL >> Deleting VPN connection elements - Be patient it takes a while"
+# Deletes the connection and VPN gateway
+- name: CL >> Deleting VPN connection elements - Be patient it takes a while
   command: "{{ item }}"
   loop:
     - az network vpn-connection delete --name {{ vpn_connection }} --resource-group {{ rg_name }}
     - az network vnet-gateway delete --name {{ cl_gateway }} --resource-group {{ rg_name }}
-  notify: "az_logout"          
+  notify: az_logout
   tags: vpn_down
-
-
-
-
