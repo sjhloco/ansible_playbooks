@@ -1,18 +1,19 @@
-# Create Site-to-site VPN to Azure
+# Create Site-to-site VPN - ASA to Azure
 
-Creates a route-based VPN with Policy Based Traffic Selectors (crypto-map not VTI) between a Cisco ASA and Azure.\
-The playbook is designed to be run from an Ansible host behind the ASA so it can automatically grab the local IP address to use in the creation of the VPN. This can be manually overridden by editing the variable *rm_public_ip*.\
-Azure is missing Ansible modules for creating the *Local Network Gateway* and *VPN Connection* so the playbook uses *AZ CLI* for these tasks.\
+Creates a route-based VPN with policy-based traffic selectors (crypto-map not VTI) between a Cisco ASA and Azure.\
+The playbook is designed to be run from an Ansible host behind the ASA as it automatically grabs the local IP address to use in the creation of the VPN. This can be manually overridden by editing the variable *rm_public_ip*.\
+Azure is missing Ansible modules for creating the *Local Network Gateway* and *VPN Connection* so the playbook uses *AZ CLI* for these tasks.
+
 The ASA credentials are defined under the **asa.yml** group_var and the Azure credentials in the **~/.azure/credentials** file (as described in Prerequisites)
 
 ### Versions
-ASA: Tested on ASA5505 running 9.2(4) and ASA5506 running 9.8(4)22
-Ansible: 2.8.4
+ASA: Tested on ASA5505 running 9.2(4) and ASA5506 running 9.8(4)22\
+Ansible: 2.8.4\
 Python: 3.6.9
 
 ### Prerequisites
-1. Install AZ CLI on the Ansible host
-*Ubuntu: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-apt?view=azure-cli-latest*
+1. Install AZ CLI on the Ansible host\
+*Ubuntu: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-apt?view=azure-cli-latest* \
 *RedHat: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-yum?view=azure-cli-latest*
 
 2. Create a Service Principal Credential Azure module authentication (2nd command tests it)
@@ -26,7 +27,7 @@ az login --service-principal --username APP_ID --password PASSWORD --tenant TENA
 az account show
 ```
 
-4. In the home directory of the Ansible host create an Azure directory and credentials file with these details:
+4. In the home directory of the Ansible host create an Azure directory and credentials file with the following details:
 ```css
 mkdir ~/.azure
 vi ~/.azure/credentials
@@ -44,21 +45,21 @@ pip install ansible[azure] --user
 ```
 
 ### Variables
-The varibles are split between three files:
+The varibles that are used in the playbook are split between three files:
 
 **asa.yml:** ASA specific variables
-*ansible_user:* ASA username
-*ansible_ssh_pass:* ASA password
+- *ansible_user:* ASA username
+- *ansible_ssh_pass:* ASA password
 
-*vpn_index:* Index number used for the phase1 ikev2 policy and crypto-map
-*crypto_map:* Name of the crypto map
-*vpn_interface:* Interface used in NoNAT and what the ikev2 policy and crypto-map are associated to
-*outside_acl:* Name of Outside ACL limiting access from the indivudal subnets (no sysopt connection permit-vpn)
+- *vpn_index:* Index number used for the phase1 ikev2 policy and crypto-map
+- *crypto_map:* Name of the crypto map
+- *vpn_interface:* Interface used in NoNAT and what the ikev2 policy and crypto-map are associated to
+- *outside_acl:* Name of Outside ACL limiting access from the indivudal subnets (no sysopt connection permit-vpn)
 
-*asa_vpn.acl:* Name of the VPN ACL
-*asa_vpn.local_grp:* Name of the object-group holding the ASA local networks
-*asa_vpn.az_vnet_grp:* Name of the object-group holding the Virtual Network s(supernet)
-*asa_vpn.az_subnet_grp:* Name of the object-group holding the Virtual Network subnets
+- *asa_vpn.acl:* Name of the VPN ACL
+- *asa_vpn.local_grp:* Name of the object-group holding the ASA local networks
+- *asa_vpn.az_vnet_grp:* Name of the object-group holding the Virtual Network s(supernet)
+- *asa_vpn.az_subnet_grp:* Name of the object-group holding the Virtual Network subnets
 
 **azure.yml:** Azure specific variables
 *cl_region:*  Azure region in which to build VPN objects
