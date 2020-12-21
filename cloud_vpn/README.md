@@ -50,12 +50,10 @@ The varibles that are used in the playbook are split between three files:
 **asa.yml:** ASA specific variables
 - *ansible_user:* ASA username
 - *ansible_ssh_pass:* ASA password
-
 - *vpn_index:* Index number used for the phase1 ikev2 policy and crypto-map
 - *crypto_map:* Name of the crypto map
 - *vpn_interface:* Interface used in NoNAT and what the ikev2 policy and crypto-map are associated to
 - *outside_acl:* Name of Outside ACL limiting access from the indivudal subnets (no sysopt connection permit-vpn)
-
 - *asa_vpn.acl:* Name of the VPN ACL
 - *asa_vpn.local_grp:* Name of the object-group holding the ASA local networks
 - *asa_vpn.az_vnet_grp:* Name of the object-group holding the Virtual Network s(supernet)
