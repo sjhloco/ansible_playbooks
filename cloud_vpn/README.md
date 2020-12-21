@@ -1,49 +1,120 @@
 # Create Site-to-site VPN to Azure
 
-Creates a route-based VPN between a small office/home and Azure.
-The playbook is designed to be run from an Ansible host behind the ASA as it automatically grabs the local IP address to use in the creation of the VPN. This can be manually overridden by editing the variable *rm_public_ip*.
-Tested from Azure to an ASA 5505 running 9.2(4). 
+Creates a route-based VPN with Policy Based Traffic Selectors (crypto-map not VTI) between a Cisco ASA and Azure.\
+The playbook is designed to be run from an Ansible host behind the ASA so it can automatically grab the local IP address to use in the creation of the VPN. This can be manually overridden by editing the variable *rm_public_ip*.\
+Azure is missing Ansible modules for creating the *Local Network Gateway* and *VPN Connection* so the playbook uses *AZ CLI* for these tasks.\
+The ASA credentials are defined under the **asa.yml** group_var and the Azure credentials in the **~/.azure/credentials** file (as described in Prerequisites)
 
-Azure is missing Ansible modules for creating the *Local Network Gateway* and *VPN Connection* so the playbook uses *AZ CLI* for these tasks. It utomatically logs in and out of *AZ CLI* when performing these tasks using the credentials from the Azure Ansible modules (credentials file).
+### Versions
+ASA: Tested on ASA5505 running 9.2(4) and ASA5506 running 9.8(4)22
+Ansible: 2.8.4
+Python: 3.6.9
 
-### Prerequisites ###
-1. Install AZ CLI on the Ansible host.
-<br/>*Ubuntu: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-apt?view=azure-cli-latest*
-<br/>*RedHat: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-yum?view=azure-cli-latest*
-2. Create the Service Principal Credentials that are used for authentication by the Azure modules.
-<br/>*az ad sp create-for-rbac --name Ansible                                       Created APP_ID called Ansible*
-<br/>*az login --service-principal --username APP_ID --password PASSWORD --tenant TENANT_ID               To test*
-3. Get the Azure SubscriptionID (the 2nd dictionary key *id*).
-<br/>*az account show*
-4. In the home directory of the Ansible host create an Azure directory and credentials file with the following details.
-<br/>*mkdir ~/.azure*
-<br/>*vi ~/.azure/credentials*
-<br/>*[default]*
-<br/>*subscription_id=your-subscription_id*
-<br/>*client_id=security-principal-appid*
-<br/>*secret=security-principal-password*
-<br/>*tenant=security-principal-tenant*
-5. Remove a conflicting Python cryptography package and install the required Ansible Azure packages.
-<br/>*sudo pip uninstall -y cryptography*
-<br/>*pip install ansible[azure] --user*
+### Prerequisites
+1. Install AZ CLI on the Ansible host
+*Ubuntu: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-apt?view=azure-cli-latest*
+*RedHat: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-yum?view=azure-cli-latest*
+
+2. Create a Service Principal Credential Azure module authentication (2nd command tests it)
+```css
+az ad sp create-for-rbac --name Ansible
+az login --service-principal --username APP_ID --password PASSWORD --tenant TENANT_ID
+```
+
+3. Get the Azure SubscriptionID (the 2nd dictionary key *id*)
+```css
+az account show
+```
+
+4. In the home directory of the Ansible host create an Azure directory and credentials file with these details:
+```css
+mkdir ~/.azure
+vi ~/.azure/credentials
+[default]
+subscription_id=your-subscription_id
+client_id=security-principal-appid
+secret=security-principal-password
+tenant=security-principal-tenant
+```
+
+5. Remove the conflicting Python cryptography package and install the Ansible Azure packages
+```css
+sudo pip uninstall -y cryptography
+pip install ansible[azure] --user
+```
+
+### Variables
+The varibles are split between three files:
+
+**asa.yml:** ASA specific variables
+*ansible_user:* ASA username
+*ansible_ssh_pass:* ASA password
+
+*vpn_index:* Index number used for the phase1 ikev2 policy and crypto-map
+*crypto_map:* Name of the crypto map
+*vpn_interface:* Interface used in NoNAT and what the ikev2 policy and crypto-map are associated to
+*outside_acl:* Name of Outside ACL limiting access from the indivudal subnets (no sysopt connection permit-vpn)
+
+*asa_vpn.acl:* Name of the VPN ACL
+*asa_vpn.local_grp:* Name of the object-group holding the ASA local networks
+*asa_vpn.az_vnet_grp:* Name of the object-group holding the Virtual Network s(supernet)
+*asa_vpn.az_subnet_grp:* Name of the object-group holding the Virtual Network subnets
+
+**azure.yml:** Azure specific variables
+*cl_region:*  Azure region in which to build VPN objects
+*rg_name:* Azure resource-group name
+
+*public_ip_name:* Name of the Azure public IP object. An ansible fact is automaticall created for this
+*vn_name:* Azure virtual-network name that holds the address spaces allowed over the VPN
+*gw_subnet_name:* Azure Gateway subnet name, like p-t-p link) between VPN gateway and the Virtual Network
+*gw_subnet_prfx:* Azure Gateway subnet network/prefix, like p-t-p link) between VPN gateway and the Virtual Network
+
+*cl_gateway:* Azure virtual network gateway name, binds all the Azurw VPN elements together (VNET, public IP)
+*rm_gateway:* Name of Azure object to group remote site publicIP and subnets (interesting traffic)
+*vpn_connection:* Azures VPN connection links Azure virtual network gateway and remote public IP and networks
+
+**all.yml:** VPN variables such as interesting traffic, PSK, encryption and hashing algorithms
+*cl_provider:* Cloud provider name used in ASA object names
+*rm_location:* VPN remote end used to create cloud provider object names
+
+Remote-side VPN variables - Interesting traffic and public IP address
+*rm_public_ip:* Public IP address of the remote site (ASA). By default this is hashed out and got automatically
+*rm_subnets:* Subnets of the networks at the remote site *behind (ASA)
+
+Cloud-side VPN variables - Interesting traffic and peer
+*vn_addr_spc* List of address spaces (supernets) within the virtual network. Are used as the interesting traffic on the ASA
+*cl_subnets:* Dictionary {name: network/prefix } of the subnest within the Azure Virtual Network. Are allowed in the Outside ACL on the ASA
+
+VPN encryption (AES), hashing (SHA) algorithms and PSK
+*p1_encr*
+*p1_hash*
+*dh*
+*p1_life*
+*p2_encr*
+*p2_hash*
+*pfs*
+*sa_life*
+*sa_size*
+*psk*
 
 ### Running the playbook ###
 The playbook can be run with the following tags:
 
-**--tag deploy:** Assumes that nothing is created. If not already existing it will createthe following.
-<br/>AZ: *Resource_group, Public_ip, virtual_network, subnets, gateway_subnets, VPN_gateway, local_network_gateway, vpn_connection (and ipsec_policy)*
-<br/>ASA: *ikev2_policy, ikev2_ipsec_proposal, crypto_map, interesting_traffic_ACL, outside_acl, nonat, tunnel-group*
+**--tag deploy:** Assumes that nothing is created. If not already existing it will createthe following.\
+AZ: *Resource_group, Public_ip, virtual_network, subnets, gateway_subnets, VPN_gateway, local_network_gateway, vpn_connection (and ipsec_policy)*\
+ASA: *ikev2_policy, ikev2_ipsec_proposal, crypto_map, interesting_traffic_ACL, outside_acl, nonat, tunnel-group*
 
-**--tag destroy:** Only removes the configuration specific to to this VPN tunnel, so wont remove any of the AZ vnet/subnets or the ASA ikev2_policy/ipsec_proposal.
-<br/>AZ: *Public_ip, local_network_gateway, VPN_gateway, vpn_connection (and ipsec_policy)*
-<br/>ASA: *Crypto_map_100, ACLs, object-groups, nonat, tunnel-group*
- 
-**--tag vpn_down:**	Deletes the components to break the VPN (more importantly the elements that Azure bills you for).
-<br/>AZ: *VPN_gateway, vpn_connection (including ipsec_policy)*
-<br/>ASA: *Crypto_map_100 set peer, tunnel-group*
+**--tag destroy:** Only removes the configuration specific to to this VPN tunnel, so wont remove any of the AZ vnet/subnets or the ASA ikev2_policy/ipsec_proposal.\
+AZ: *Public_ip, local_network_gateway, VPN_gateway, vpn_connection (and ipsec_policy)*\
+ASA: *Crypto_map_100, ACLs, object-groups, nonat, tunnel-group*
 
-**--tag vpn_up:** Brings backup the tunnel by adding back the components deleted by vpn_down and updating the local gateway incase the remote peer address had changed.
-<br/>AZ: *VPN_gateway, vpn_connection (including ipsec_policy)*
-<br/>ASA: *Crypto_map_100 set peer tunnel-group*
+**--tag vpn_down:**	Deletes the components to break the VPN (more importantly the elements that Azure bills you for).\
+AZ: *VPN_gateway, vpn_connection (including ipsec_policy)*\
+ASA: *Crypto_map_100 set peer, tunnel-group*
 
-The interesting traffic and pre-shared key can be updated by re-running *deploy*. The crypto algorithmns (*vpn-connection ipsec policy*) can not be updated, to change these the vpn connection must be deleted (*vpn_down*) and added back (*vpn_up*). This is a limitation of Azure itself rather than the playbook.
+**--tag vpn_up:** Brings backup the tunnel by adding back the components deleted by vpn_down and updating the local gateway incase the remote peer address had changed.\
+AZ: *VPN_gateway, vpn_connection (including ipsec_policy)*\
+ASA: *Crypto_map_100 set peer tunnel-group*
+
+The interesting traffic and pre-shared key can be updated by re-running *deploy*.\
+The crypto algorithmns (*vpn-connection ipsec policy*) cannot be updated, to change these the vpn connection must be deleted (*vpn_down*) and added back (*vpn_up*).

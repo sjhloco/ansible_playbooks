@@ -2,37 +2,24 @@
 ansible_python_interpreter: "/usr/bin/env python"          # Ubuntu
 
 #Names of the VPN sites, so the cloud provider (i.e Azure) and the remote location (i.e home))
-cl_provider: az
-rm_location: hm
+cld_provider: AZ
+rmte_location: HME
 
-# Cloud Provider base Parameters
-cl_region: westeurope
-rg_name: stesworld
-vn_name: NT-vnet1
-vn_pfx: 10.20.0.0/16
+# Remote-side VPN variables - Peer IP address and Interesting traffic
+#rmte_public_ip: 86.144.174.117           # Unhash to statically define. By default if Ansible behind ASA is automatically got
+rmte_subnets:
+  - 10.10.10.0/24
+  - 10.10.20.0/24
 
-# Cloud-side VPN variables - Interesting traffic and peer
-public_ip_name: NT-vpn-{{ rm_location }}-ip
-cl_gateway: NT-vpn-{{ rm_location }}-{{ cl_provider }} 
-cl_subnets: {
-  NT-vnet1-mgmt: 10.20.10.0/24,
+# Cloud-side VPN variables - Peer IP Azure object name, interesting traffic and subnets (for filtering in outside ACL)
+# cld_public_ip: 20.71.61.36            # Unhash if Azure is deleted yet ASA is not, allwos you to run ASA parts
+vn_addr_spc:
+  - 10.20.0.0/16
+cld_subnets:
+  NT-vnet1-mgmt: 10.20.10.0/24
   NT-vnet1-data: 10.20.20.0/24
-}  
-gw_subnet_name: GatewaySubnet
-gw_subnet_prfx: 10.20.255.0/28
 
-# Remote-side VPN variables - Interesting traffic
-rm_gateway: NT-vpn-{{ rm_location }}-rm
-rm_subnets: {
-  NT-vl10-mgmt: 10.10.10.0/24,
-  NT-vl20-data: 10.10.20.0/24 
-}
-vpn_connection: NT-vpn-{{ rm_location }}-conn    # Azures VPN connection links peers and forms the VPN
-
-# Unhash if want to set a static address rather than dynamically creating one 
-#rm_public_ip: 86.144.174.117
-
-# VPN encryption (AES) and hashing (SHA) algorithms
+# VPN PSK, encryption (AES) and hashing (SHA) algorithms
 p1_encr: 256
 p1_hash: 384
 dh: 24

@@ -1,0 +1,381 @@
+---
+vm_shell:
+  # - name: win_template
+  #   id: windows9_64Guest    # Is actually win10 https://code.vmware.com/apis/358/doc/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
+  #   state: poweredon
+  #   hdd: 32
+  #   mem: 2048
+  #   cpu: 1
+  #   vlan: data
+  #   image: "[ds1] en-uk_windows_10_enterprise_ltsc_2019_x64_dvd_723dfbc1.iso"
+  # - name: cos_template
+  #   id: centos7_64Guest
+  #   state: poweredon
+  #   hdd: 16
+  #   mem: 1024
+  #   cpu: 1
+  #   vlan: data
+  #   image: "[ds1] CentOS-8.2.2004-x86_64-dvd1.iso"
+
+  - name: DC1-CKP-XFW01
+    id: rhel7_64Guest
+    state: poweredon
+    hdd: 16
+    mem: 4096
+    cpu: 2
+    vlan: DC1_MGMT_NET
+    vlan1: DC1_P2P_BLU_CKP01
+    vlan2: DC1_P2P_NPE_CKP01
+    image: "[ds1] Check_Point_R80.20_T101_Security_Gateway.iso"
+  - name: DC1-CKP-XFW02
+    id: rhel7_64Guest
+    state: poweredon
+    hdd: 16
+    mem: 4096
+    cpu: 2
+    vlan: DC1_MGMT_NET
+    vlan1: DC1_P2P_BLU_CKP02
+    vlan2: DC1_P2P_NPE_CKP02
+    image: "[ds1] Check_Point_R80.20_T101_Security_Gateway.iso"
+
+  - name: DC2-CKP-XFW01
+    id: rhel7_64Guest
+    state: poweredon
+    hdd: 16
+    mem: 4096
+    cpu: 2
+    vlan: DC2_MGMT_NET
+    vlan1: DC2_P2P_BLU_CKP01
+    vlan2: VM Network
+    image: "[ds1] Check_Point_R80.20_T101_Security_Gateway.iso"
+  - name: DC2-CKP-XFW02
+    id: rhel7_64Guest
+    state: poweredon
+    hdd: 16
+    mem: 4096
+    cpu: 2
+    vlan: DC2_MGMT_NET
+    vlan1: DC2_P2P_BLU_CKP02
+    vlan2: VM Network
+    image: "[ds1] Check_Point_R80.20_T101_Security_Gateway.iso"
+
+
+  - name: DC1-CKP-MGMT01
+    id: rhel7_64Guest
+    state: poweredon
+    hdd: 128
+    mem: 6144
+    cpu: 2
+    vlan: DC1_MGMT_NET
+    vlan1: DC2_MGMT_NET
+    vlan2: VM Network
+    image: "[ds1] Check_Point_R80.20_T117_Security_Management.iso"
+
+
+# need to make BGW ports  access ports
+# need to create  mgmt vlans
+# need to create dummy vlans for npe, 1000 and 2000
+# need to add a backdoor in for jump boxes
+
+
+# vm_tmpl:
+#   - dc: ET
+#     esx_host: 192.168.10.41
+#     ds: ds1
+#     dir: /ET/vm/campus
+#     vms:
+#       - name: DC0-NPE-COS01
+#         tmpl: "{{ tmpl_dir }}/cos8_tmpl"
+#         timezone: Europe/London
+#         # Only need if different to template
+#         # hdd: 16
+#         # mem: 1024
+#         # cpu: 1
+#         vlan: data
+#         ip: 192.168.10.82
+#         mask: 255.255.255.0
+#         gw: 192.168.10.1
+#         # mac: need to work out format
+#         state: absent
+#         # state: poweredon      # or change to present but customization wouldnt work
+#       - name: DC0-NPE-WIN01
+#         tmpl: "{{ tmpl_dir }}/win10_tmpl"
+#         timezone: 085
+#         vlan: data
+#         ip: 192.168.10.83
+#         mask: 255.255.255.0
+#         gw: 192.168.10.1
+#         # mac: need to work out format
+#         # state: poweredon
+#         state: absent
+
+
+vm_tmpl:
+  # Devices hosted on ET (DC0) ESX host
+  - dc: ET
+    esx_host: 192.168.10.41
+    ds: ds1
+    base_dir: /ET/vm
+    type:
+      - tmpl: "{{ tmpl_dir }}/cos8_tmpl"
+        timezone: Europe/London
+        state: poweredon
+        vms:
+          # CENTOS VMs at DC0
+          - name: DC1-JUMP-COS01
+            dir: blu
+            # Only need if different to template
+            # hdd: 16
+            # mem: 1024
+            # cpu: 1
+            vlan: data
+            ip: 192.168.10.253
+            mask: 255.255.255.0
+            gw: 192.168.10.1
+            mac: ea:d1:11:03:02:53
+          - name: DC0-NPE-COS01
+            dir: npe
+            vlan: DC0_NPE_VL724
+            ip: 172.27.24.11
+            mask: 255.255.0.0
+            gw: 172.27.24.1
+            mac: ea:d0:07:24:00:11
+          - name: CAMP-810-COS01
+            dir: campus
+            vlan: CAMP_INFRA_vl810
+            ip: 172.17.10.11
+            mask: 255.255.255.0
+            gw: 172.17.10.1
+            mac: ea:ca:08:10:00:11
+          - name: CAMP-850-COS01
+            dir: campus
+            vlan: CAMP_DATA_FL11_vl850
+            ip: 172.17.50.11
+            mask: 255.255.254.0
+            gw: 172.17.50.1
+            mac: ea:ca:08:50:00:11
+          - name: DC1-1103-COS01
+            dir: blu
+            vlan: DC1_BLU_COMPUTE_ADC_VL1103
+            ip: 10.100.103.11
+            mask: 255.255.255.0
+            gw: 10.100.103.1
+            mac: ea:d1:11:03:00:11
+          - name: DC1-1109-COS01
+            dir: blu
+            vlan: DC1_BLU_COMPUTE_CITRIX_VL1109
+            ip: 10.100.109.11
+            mask: 255.255.255.0
+            gw: 10.100.109.1
+            mac: ea:d1:11:09:00:11
+          - name: DC2-2103-COS01
+            dir: blu
+            vlan: DC2_BLU_COMPUTE_ADC_VL2103
+            ip: 10.200.103.11
+            mask: 255.255.255.0
+            gw: 10.200.103.1
+            mac: ea:d2:21:03:00:11
+          - name: DC2-2109-COS01
+            dir: blu
+            vlan: DC2_BLU_COMPUTE_CITRIX_VL2109
+            ip: 10.200.109.11
+            mask: 255.255.255.0
+            gw: 10.200.109.1
+            mac: ea:d2:21:09:00:11
+      # Window10 VMs at DC0
+      - tmpl: "{{ tmpl_dir }}/win10_tmpl"
+        timezone: 085
+        state: poweredon
+        vms:
+          - name: DC1-JUMP-WIN01
+            dir: blu
+            vlan: data
+            ip: 192.168.10.254
+            mask: 255.255.255.0
+            gw: 192.168.10.1
+            mac: ea:d2:21:03:02:54
+          - name: DC0-NPE-WIN01
+            dir: npe
+            vlan: DC0_NPE_VL724
+            ip: 172.27.24.10
+            mask: 255.255.0.0
+            gw: 172.27.24.1
+            mac: ea:d0:07:24:00:10
+          - name: CAMP-810-WIN01
+            dir: campus
+            vlan: CAMP_INFRA_vl810
+            ip: 172.17.10.10
+            mask: 255.255.255.0
+            gw: 172.17.10.1
+            mac: ea:ca:08:10:00:10
+          - name: CAMP-850-WIN01
+            dir: campus
+            vlan: CAMP_DATA_FL11_vl850
+            ip: 172.17.50.10
+            mask: 255.255.254.0
+            gw: 172.17.50.1
+            mac: ea:ca:08:50:00:10
+          - name: DC1-1103-WIN01
+            dir: blu
+            vlan: DC1_BLU_COMPUTE_ADC_VL1103
+            ip: 10.100.103.10
+            mask: 255.255.255.0
+            gw: 10.100.103.1
+            mac: ea:d1:11:03:00:10
+          - name: DC1-1109-WIN01
+            dir: blu
+            vlan: DC1_BLU_COMPUTE_CITRIX_VL1109
+            ip: 10.100.109.10
+            mask: 255.255.255.0
+            gw: 10.100.109.1
+            mac: ea:d1:11:09:00:10
+          - name: dc2-2103-WIN01
+            dir: blu
+            vlan: DC2_BLU_COMPUTE_ADC_VL2103
+            ip: 10.200.103.10
+            mask: 255.255.255.0
+            gw: 10.200.103.1
+            mac: ea:d2:21:03:00:10
+          - name: dc2-2109-WIN01
+            dir: blu
+            vlan: DC2_BLU_COMPUTE_CITRIX_VL2109
+            ip: 10.200.109.10
+            mask: 255.255.255.0
+            gw: 10.200.109.1
+            mac: ea:d2:21:09:00:10
+
+  # Devices hosted on DC1 (DC1-N9K-LEF01/02) ESX host
+  - dc: DC1
+    esx_host: 10.100.100.110
+    ds: datastore1
+    base_dir: /DC1/vm
+    type:
+      - tmpl: "{{ tmpl_dir }}/cos8_tmpl"
+        timezone: Europe/London
+        state: poweredon
+        vms:
+        # CENTOS VMs on DC1
+          - name: DC1-1103-COS02
+            dir: blu
+            vlan: DC1_BLU_COMPUTE_ADC_VL1103
+            ip: 10.100.103.12
+            mask: 255.255.255.0
+            gw: 10.100.103.1
+            mac: 1a:d1:11:03:00:12
+          - name: DC1-1109-COS02
+            dir: blu
+            vlan: DC1_BLU_COMPUTE_CITRIX_VL1109
+            ip: 10.100.109.12
+            mask: 255.255.255.0
+            gw: 10.100.109.1
+            mac: 1a:d1:11:09:00:12
+          - name: DC1-18-COS01
+            dir: blu
+            vlan: DC1_COMPUTE_VL18
+            ip: 172.25.18.11
+            mask: 255.255.255.0
+            gw: 172.25.18.1
+            mac: 1a:d1:00:18:00:11
+          - name: DC1-24-COS01
+            dir: blu
+            vlan: DC1_COMPUTE_VL24
+            ip: 172.25.24.11
+            mask: 255.255.252.0
+            gw: 172.25.24.1
+            mac: 1a:d1:00:24:00:11
+          - name: DC0-NPE-CKP01
+            dir: npe
+            vlan: DC1_NPE_VL724
+            ip: 172.27.24.1
+            mask: 255.255.0.0
+            gw: 172.27.24.254
+            mac: 1a:d1:07:24:00:01
+  #     # Windows VMs on DC1
+      - tmpl: "{{ tmpl_dir }}/win10_tmpl"
+        timezone: 085
+        state: poweredon
+        vms:
+          - name: DC1-18-WIN01
+            dir: blu
+            vlan: DC1_COMPUTE_VL18
+            ip: 172.25.18.10
+            mask: 255.255.255.0
+            gw: 172.25.18.1
+            mac: 1a:d1:00:18:00:10
+          - name: DC1-24-WIN01
+            dir: blu
+            vlan: DC1_COMPUTE_VL24
+            ip: 172.25.24.10
+            mask: 255.255.252.0
+            gw: 172.25.24.1
+            mac: 1a:d1:00:24:00:10
+
+  # # Devices hosted on DC2 (DC1-N9K-LEF01/02) ESX host
+  - dc: DC2
+    esx_host: 10.200.100.110
+    ds: datastore1
+    base_dir: /DC2/vm
+    type:
+      - tmpl: "{{ tmpl_dir }}/cos8_tmpl"
+        timezone: Europe/London
+        state: poweredon
+        vms:
+          # CENTOS VMs on DC2
+          - name: DC2-2103-COS02
+            dir: blu
+            vlan: DC2_BLU_COMPUTE_ADC_VL2103
+            ip: 10.200.103.12
+            mask: 255.255.255.0
+            gw: 10.200.103.1
+            mac: 2a:d2:21:03:00:12
+          - name: DC2-2109-COS02
+            dir: blu
+            vlan: DC2_BLU_COMPUTE_CITRIX_VL2109
+            ip: 10.200.109.12
+            mask: 255.255.255.0
+            gw: 10.200.109.1
+            mac: 2a:d2:21:09:00:12
+          - name: DC2-18-COS01
+            dir: blu
+            vlan: DC2_COMPUTE_VL18
+            ip: 172.25.18.21
+            mask: 255.255.255.0
+            gw: 172.25.18.1
+            mac: 2a:d2:00:18:00:21
+          - name: DC2-24-COS01
+            dir: blu
+            vlan: DC2_COMPUTE_VL24
+            ip: 172.25.24.21
+            mask: 255.255.252.0
+            gw: 172.25.24.1
+            mac: 2a:d2:00:24:00:21
+  #         # Windows VMs on DC2
+      - tmpl: "{{ tmpl_dir }}/win10_tmpl"
+        timezone: 085
+        state: poweredon
+        vms:
+          - name: dc2-18-WIN01
+            dir: blu
+            vlan: DC2_COMPUTE_VL18
+            ip: 172.25.18.20
+            mask: 255.255.255.0
+            gw: 172.25.18.1
+            mac: 2a:d2:00:18:00:20
+          - name: dc2-24-WIN01
+            dir: blu
+            vlan: DC2_COMPUTE_VL24
+            ip: 172.25.24.20
+            mask: 255.255.252.0
+            gw: 172.25.24.1
+            mac: 2a:d2:00:24:00:20
+
+
+
+
+  #     - name: DC0-HOS-CSR01	99	10.99.99.1	ead0.0099.0001	CSR	/24
+  #     - name: DC0-HOS-CSR01	99	10.99.99.2	ead0.0099.0002	CSR	/24
+  #     - name: DC1-NPE-CSR01	724	172.25.24.1	2ad2.0724.0001	CSR	/16
+  # - name: dc2-NPE-CSR01	724	172.25.24.2	2ad2.0724.0002	CSR	/16
+  #     - name: DC0-HOS-ASA01	99	10.99.99.8	ead0.0099.0008	asa	/24
+
+

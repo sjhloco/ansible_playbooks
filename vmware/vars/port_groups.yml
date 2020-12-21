@@ -1,0 +1,99 @@
+---
+vds:
+  - name: DC1_vDS
+    port_grp:
+      - name: DC1_COMPUTE_VL18
+        vlan_nr: 18
+        num_ports: 8
+        state: present
+      - name: DC1_COMPUTE_VL24
+        vlan_nr: 24
+        num_ports: 8
+        state: present
+      - name: DC1_NPE_VL724
+        vlan_nr: 724
+        num_ports: 8
+        state: present
+      - name: DC1_BLU_COMPUTE_ADC_VL1103
+        vlan_nr: 1103
+        num_ports: 8
+        state: present
+      - name: DC1_BLU_COMPUTE_CITRIX_VL1109
+        vlan_nr: 1109
+        num_ports: 8
+        state: present
+  - name: DC2_vDS
+    port_grp:
+      - name: DC2_COMPUTE_VL18
+        vlan_nr: 18
+        num_ports: 8
+        state: present
+      - name: DC2_COMPUTE_VL24
+        vlan_nr: 24
+        num_ports: 8
+        state: present
+      - name: DC2_NPE_VL724
+        vlan_nr: 724
+        num_ports: 8
+        state: present
+      - name: DC2_BLU_COMPUTE_ADC_VL2103
+        vlan_nr: 2103
+        num_ports: 8
+        state: present
+      - name: DC2_BLU_COMPUTE_CITRIX_VL2109
+        vlan_nr: 2109
+        num_ports: 8
+        state: present
+
+vls:
+  - name: vSwitch1
+    esx_host: [192.168.10.41]
+    port_grp:
+      - name: DC0_INET_vl99
+        vlan_nr: 99
+        state: present
+      - name: DC0_NPE_VL724
+        vlan_nr: 724
+        state: present
+      - name: CAMP_INFRA_vl810
+        vlan_nr: 810
+        state: present
+      - name: CAMP_DATA_FL11_vl850
+        vlan_nr: 850
+        state: present
+      - name: DC1_BLU_COMPUTE_ADC_VL1103
+        vlan_nr: 1103
+        state: present
+      - name: DC1_BLU_COMPUTE_CITRIX_VL1109
+        vlan_nr: 1109
+        state: present
+      - name: DC2_BLU_COMPUTE_ADC_VL2103
+        vlan_nr: 2103
+        state: present
+      - name: DC2_BLU_COMPUTE_CITRIX_VL2109
+        vlan_nr: 2109
+        state: present
+      - name: DC1_MGMT_NET
+        vlan_nr: 1100
+        state: present
+      - name: DC2_MGMT_NET
+        vlan_nr: 2100
+        state: present
+      - name: DC1_P2P_BLU_CKP01
+        vlan_nr: 1191
+        state: present
+      - name: DC1_P2P_BLU_CKP02
+        vlan_nr: 1192
+        state: present
+      - name: DC1_P2P_NPE_CKP01
+        vlan_nr: 1193
+        state: present
+      - name: DC1_P2P_NPE_CKP02
+        vlan_nr: 1194
+        state: present
+      - name: DC2_P2P_BLU_CKP01
+        vlan_nr: 2191
+        state: present
+      - name: DC2_P2P_BLU_CKP02
+        vlan_nr: 2192
+        state: present

@@ -9,8 +9,14 @@ ansible_ssh_pass: !vault |
           6362656262643964610a653830346165633264366465306562663733633539666465343337663662
           6663
 
-
 # ASA specific VPN configuration details
 vpn_index: 100
-crypto_map: transit_map
-vpn_interface: outside
+crypto_map: CRYPTO_MAP
+vpn_interface: HME_INET_VL99
+outside_acl: OUTSIDE
+# Naming for the VPN ACL and objects groups
+asa_vpn:
+  acl: "{{ cld_provider }}_VPN"
+  local_grp: "{{ cld_provider }}_LOCAL"
+  az_vnet_grp: "{{ cld_provider }}_REMOTE_VNET"
+  az_subnet_grp: "{{ cld_provider }}_REMOTE_SUBNET"

@@ -1,66 +1,52 @@
 ---
-- name: Cloud site-to-site VPN
+- name: Azure to ASA site-to-site VPN
   hosts: localhost
+  vars_files:
+    - vars/azure.yml
+
   tasks:
-  # Get public IP adddresses for remote end (non-cloud) of the tunnel
+  # 1. Get remote end (non-cloud) public IP adddress
   - name: SYS >> Getting local Public IP address
     ipify_facts:
     check_mode: no
-    tags: [deploy, vpn_up]   
-  - name: SYS >> Creating fact for Local public IP    
+    tags: [deploy, vpn_up]
+  - name: SYS >> Creating fact for Local public IP
     set_fact:
-      rm_public_ip: "{{ ipify_public_ip }}"  
-    check_mode: no  
+      rmte_public_ip: "{{ ipify_public_ip }}"
+    check_mode: no
     tags: [deploy, vpn_up]
 
-# Need to run before delete in Azure or the public IP will not be recoverable if not VPN
-  - name: CL >> Getting {{ cl_provider.upper() }} public IP  
-    azure_rm_publicipaddress_facts:
-      resource_group: "{{ rg_name }}"
-      name: "{{ public_ip_name }}"
-    register: publicip
-    check_mode: no
-    tags: [destroy, vpn_down]  
-  - name: SYS >> Creating fact for {{ cl_provider.upper() }} public IP    
-    set_fact:
-      cl_public_ip: "{{ publicip.ansible_facts.azure_publicipaddresses[0].properties.ipAddress }}"
-    check_mode: no  
-    tags: [destroy, vpn_down]  
-  - fail: 
-      msg: No Azure public IP present so playbook aborted. Try running it again.
-    when: cl_public_ip == ""   # Need to fail as if not present as can cause all tunnel-groups to be wiped
-    check_mode: no
-    tags: [destroy, vpn_down] 
+  # 2. Azure Role for the creation of the Azure end of the VPN must be run before gathering the Azure public IP address
+  - name: CLD >> Azure Configuration
+    include_role:
+      name: azure
+    tags: [deploy, vpn_up]
 
-# Run all the plays to create the Azure end of the VPN
-- name: Azure Configuration
-  hosts: localhost
-  roles:
-    - azure
-
-# Need to run after VPN creation Azure as the public IP will not be know until VPN created
-- hosts: localhost
-  tasks:
-  - name: CL >> Getting {{ cl_provider.upper() }} public IP  
-    azure_rm_publicipaddress_facts:
-      resource_group: "{{ rg_name }}"
-      name: "{{ public_ip_name }}"
-    register: publicip
+  # 3. Get and create a fact from the Azure public IP address
+  - block:
+    - name: CLD >> Getting {{ cld_provider.upper() }} public IP
+      azure_rm_publicipaddress_facts:
+        resource_group: "{{ rg_name }}"
+        name: "{{ public_ip_name }}"
+      register: publicip
+    # Exits script if no public IP in Azure as ASA cant run without this
+    - fail:
+        msg: No Azure public IP present so playbook aborted. Cant run the ASA elements without this
+      when: publicip.ansible_facts.azure_publicipaddresses[0].properties.ipAddress is not defined
+    - name: SYS >> Creating fact for {{ cld_provider.upper() }} public IP
+      set_fact:
+        cld_public_ip: "{{ publicip.ansible_facts.azure_publicipaddresses[0].properties.ipAddress }}"
     check_mode: no
-    tags: [deploy, vpn_up]  
-  - name: SYS >> Creating fact for {{ cl_provider.upper() }} public IP    
-    set_fact:
-      cl_public_ip: "{{ publicip.ansible_facts.azure_publicipaddresses[0].properties.ipAddress }}"
-    check_mode: no  
-    tags: [deploy, vpn_up] 
-  - fail: 
-      msg: No Azure public IP present so playbook aborted. Try running it again.
-    when: cl_public_ip == ""   # Need to fail as if not present as can cause all tunnel-groups to be wiped
-    check_mode: no
-    tags: [deploy, vpn_up] 
+    tags: [destroy, vpn_down, deploy, vpn_up]
 
-# Run all the plays to create the ASA end of the VPN
-- name: ASA Configuration
+  # 4. Azure Role for the deletion of the Azure end of the VPN must be run after gathering the the Azure public IP address
+  - name: ROLE >> Azure Configuration
+    include_role:
+      name: azure
+    tags: [destroy, vpn_down]
+
+# 5. Run all the plays to create the ASA end of the VPN
+- name: ROLE >> ASA Configuration
   hosts: asa
   roles:
     - asa

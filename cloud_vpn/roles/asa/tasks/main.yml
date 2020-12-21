@@ -1,7 +1,8 @@
 ---
 ########################## ASA Plays ##########################
+######### Create all the ASA elements of the VPN #########
 
-# Creates and applies VPN config from a template
+## Creates and applies VPN config from a template
 - name: NET >> Configure Remote VPN
   asa_config:
     src: vpn_config.j2
@@ -9,54 +10,51 @@
   register: vpn_config
   tags: deploy
 
+######### Delete all the ASA elements of the VPN #########
 # Checks what parts of VPN config exists and deletes them
-- name: NET >> Checking existing VPN config on the ASA
-  asa_command:
-    commands: "show run | inc {{ cl_provider.upper() }}|transit_map 100|{{ hostvars.localhost.cl_public_ip }} type ipsec-l2l"
-  register: raw_config
-  check_mode: no
-  tags: destroy
-# Temp file to store the generated config
-- file: path=/tmp/config state=directory
-  delegate_to: localhost
-  when: raw_config.stdout[0] != "" # Only run if raw_config is not empty
+- block:
+  - name: NET >> Checking existing VPN config on the ASA
+    asa_command:
+      commands: "show run | inc {{ cld_provider.upper() }}|{{ crypto_map }} 100|{{ hostvars.localhost.cld_public_ip }} type ipsec-l2l"
+    register: raw_config
+  # Temp file to store the generated config
+  - file: path=/tmp/config state=directory
+    delegate_to: localhost
+    when: raw_config.stdout[0] != "" # Only run if raw_config is not empty
   check_mode: no # Ensures still runs in checkmode.
   tags: destroy
 
 # Creates the config using custom jinja filter as is very conditional
-- name: NET >> Generating VPN config to be deleted
-  copy:
-    content: "{{ raw_config.stdout|delete_vpn(vpn_interface, cl_provider, vpn_index, crypto_map, hostvars.localhost.cl_public_ip, pfs, p2_encr, sa_life, sa_size) }}"
-    dest: /tmp/config/{{ inventory_hostname }}.cfg
-  delegate_to: localhost
-  when: raw_config.stdout[0] != "" # Only run if raw_config is not empty
-  check_mode: no
-  tags: destroy
-- name: NET >> Deleting VPN config
-  asa_config:
-    src: /tmp/config/{{ inventory_hostname }}.cfg
-  when: raw_config.stdout[0] != "" # Only run if raw_config is not empty
-  notify: vpn_config
-  register: vpn_config
-  tags: destroy
-
-- file: path=/tmp/config state=absent # Cleanup file
-  delegate_to: localhost
+- block:
+  - name: NET >> Generating VPN config to be deleted
+    copy:
+      content: "{{ raw_config.stdout|delete_vpn(vpn_interface, outside_acl, vpn_index, crypto_map, hostvars.localhost.cld_public_ip, asa_vpn, pfs, p2_encr, sa_life, sa_size) }}"
+      dest: /tmp/config/{{ inventory_hostname }}.cfg
+    delegate_to: localhost
+  - name: NET >> Deleting VPN config
+    asa_config:
+      src: /tmp/config/{{ inventory_hostname }}.cfg
+    notify: vpn_config
+    register: vpn_config
+  # Cleans up the temp file that holds the ASA config to be deployed
+  - file: path=/tmp/config state=absent # Cleanup file
+    delegate_to: localhost
   when: raw_config.stdout[0] != "" # Only run if raw_config is not empty
   check_mode: no # Ensures still runs in checkmode.
   tags: destroy
 
-# To take down or bring back up the VPN
+########## Remove certain elements to break the VPN ##########
 - name: NET >> Bring down the VPN
   asa_config:
     commands:
-      - "no crypto map transit_map {{ vpn_index }} set peer {{ hostvars.localhost.cl_public_ip }}"
-      - "clear configure tunnel-group {{ hostvars.localhost.cl_public_ip }}"
+      - "no crypto map {{ crypto_map }} {{ vpn_index }} set peer {{ hostvars.localhost.cld_public_ip }}"
+      - "clear configure tunnel-group {{ hostvars.localhost.cld_public_ip }}"
   notify: vpn_config
   register: vpn_config
   tags: vpn_down
 
-- name: NET >> Bring up the VPN
+########## Add back certain elements to bring up the VPN ##########
+- name: NET >> Bring up the VPNs
   asa_config:
     src: vpn_up.j2
   notify: vpn_config
