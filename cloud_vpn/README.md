@@ -50,19 +50,18 @@ The varibles that are used in the playbook are split between three files:
 **asa.yml:** ASA specific variables
 - *ansible_user:* ASA username
 - *ansible_ssh_pass:* ASA password
-
-- *vpn_index:* Index number used for the phase1 ikev2 policy and crypto-map
-- *crypto_map:* Name of the crypto map
-- *vpn_interface:* Interface used in NoNAT and what the ikev2 policy and crypto-map are associated to
-- *outside_acl:* Name of Outside ACL limiting access from the indivudal subnets (no sysopt connection permit-vpn)
+- *vpn_index:* Index number used for the phase1 ikev2 policy and the crypto-map
+- *crypto_map:* Name of the crypto-map
+- *vpn_interface:* Interface used in the NoNAT statement aswell as what ikev2 policy and crypto-map are associated to
+- *outside_acl:* Name of the Outside ACL which is used for limiting access from the indivudal subnets (*no sysopt connection permit-vpn*)
 - *asa_vpn.acl:* Name of the VPN ACL
-- *asa_vpn.local_grp:* Name of the object-group holding the ASA local networks
-- *asa_vpn.az_vnet_grp:* Name of the object-group holding the Virtual Network s(supernet)
-- *asa_vpn.az_subnet_grp:* Name of the object-group holding the Virtual Network subnets
+- *asa_vpn.local_grp:* Name of the object-group that holds the networks local to the ASA
+- *asa_vpn.az_vnet_grp:* Name of the object-group that holds the Virtual Networks (supernets)
+- *asa_vpn.az_subnet_grp:* Name of the object-group holds the Virtual Network subnets
 
 **azure.yml:** Azure specific variables
-*cl_region:*  Azure region in which to build VPN objects
-*rg_name:* Azure resource-group name
+-*cl_region:*  Azure region in which to build VPN objects
+-*rg_name:* Azure resource-group name
 
 *public_ip_name:* Name of the Azure public IP object. An ansible fact is automaticall created for this
 *vn_name:* Azure virtual-network name that holds the address spaces allowed over the VPN
