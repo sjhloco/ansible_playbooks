@@ -17,14 +17,14 @@
     tags: [deploy, vpn_up]
 
   # 2. Azure Role for the creation of the Azure end of the VPN must be run before gathering the Azure public IP address
-  - name: CLD >> Azure Configuration
+  - name: ROLE >> Azure Configuration
     include_role:
       name: azure
     tags: [deploy, vpn_up]
 
   # 3. Get and create a fact from the Azure public IP address
   - block:
-    - name: CLD >> Getting {{ cld_provider.upper() }} public IP
+    - name: SYS >> Getting {{ cld_provider.upper() }} public IP
       azure_rm_publicipaddress_facts:
         resource_group: "{{ rg_name }}"
         name: "{{ public_ip_name }}"

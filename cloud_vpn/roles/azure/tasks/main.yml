@@ -64,7 +64,7 @@
     az_creds: "{{ lookup('file', '~/.azure/credentials') }}"
   check_mode: no
   tags: [deploy, destroy, vpn_down, vpn_up]
-- name: AZ >> AZ CLI login
+- name: CLD >> AZ CLI login
   command: "{{ az_creds | az_login }}"
   check_mode: no
   tags: [deploy, destroy, vpn_down, vpn_up]
@@ -103,7 +103,7 @@
       (cfg_peer != rmte_public_ip or
       cfg_prfxs | symmetric_difference(rmte_subnets))
   # Creates the local gateway if it doesnt exist
-  - name: AZ >> Creating local gateway (remote peer and subnets)
+  - name: CLD >> Creating local gateway (remote peer and subnets)
     command: >
       az network local-gateway create
       --name {{ rmte_gateway }}
