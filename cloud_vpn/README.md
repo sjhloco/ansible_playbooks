@@ -2,6 +2,7 @@
 
 Creates a route-based VPN with policy-based traffic selectors (crypto-map not VTI) between a Cisco ASA and Azure.\
 The playbook is designed to be run from an Ansible host behind the ASA as it automatically grabs the local IP address to use in the creation of the VPN. This can be manually overridden by editing the variable *rm_public_ip*.\
+The interesting traffic for the VPN is the Azure Virtual Network with the subnest within that filtered on the ASA Outside ACL.\
 Azure is missing Ansible modules for creating the *Local Network Gateway* and *VPN Connection* so the playbook uses *AZ CLI* for these tasks.
 
 The ASA credentials are defined under the **asa.yml** group_var and the Azure credentials in the **~/.azure/credentials** file (as described in Prerequisites)
@@ -52,63 +53,63 @@ The varibles that are used in the playbook are split between three files:
 - *ansible_ssh_pass:* ASA password
 - *vpn_index:* Index number used for the phase1 ikev2 policy and the crypto-map
 - *crypto_map:* Name of the crypto-map
-- *vpn_interface:* Interface used in the NoNAT statement aswell as what ikev2 policy and crypto-map are associated to
-- *outside_acl:* Name of the Outside ACL which is used for limiting access from the indivudal subnets (*no sysopt connection permit-vpn*)
-- *asa_vpn.acl:* Name of the VPN ACL
+- *vpn_interface:* The interface that the ikev2 policy and crypto-map are associated to and what is used in the NoNAT statement
+- *outside_acl:* Name of the ingress ACL used to limit access from the individual subnets (*no sysopt connection permit-vpn*)
+- *asa_vpn.acl:* Name of the VPN interesting traffic ACL
 - *asa_vpn.local_grp:* Name of the object-group that holds the networks local to the ASA
-- *asa_vpn.az_vnet_grp:* Name of the object-group that holds the Virtual Networks (supernets)
-- *asa_vpn.az_subnet_grp:* Name of the object-group that holds the Virtual Network subnets
+- *asa_vpn.az_vnet_grp:* Name of the object-group that holds the remote cloud Virtual Networks (supernets)
+- *asa_vpn.az_subnet_grp:* Name of the object-group that holds the remote cloud Virtual Network subnets
 
 **azure.yml:** Azure specific variables
 - *cld_region:*  Azure region in which to build all the VPN objects
 - *rg_name:* Azure resource-group name
 - *public_ip_name:* Name of the Azure public IP address object
-- *vn_name:* The Azure virtual-network name that holds the address spaces allowed over the VPN
+- *vn_name:* The Azure virtual-network name that holds the address spaces allowed over the VPN (interesting traffic)
 - *gw_subnet_name:* Azure gateway subnet name. It is the equivalent of a P-t-P link between VPN gateway and the Virtual Network
 - *gw_subnet_prfx:* Azure gateway subnet network/prefix
 - *cld_gateway:* Azure virtual network gateway name. The GW binds all the Azure VPN elements together (VNET and public IP)
-- *rmte_gateway:* Name of Azure object used to group the remote sites peer public IP address and subnets (interesting traffic)
+- *rmte_gateway:* Name of Azure object used to group the remote site peer (public) IP address and subnets (interesting traffic)
 - *vpn_connection:* The Azure VPN connection links the Azure virtual network gateway and remote public IP and subnets
 
 **all.yml:** VPN variables such as interesting traffic, PSK, encryption and hashing algorithms
-*cld_provider:* Cloud provider name that is used in the ASA object names
-*rmte_location:* VPN remote site name that is used to create cloud provider object names
+- *cld_provider:* Cloud provider name that is used in the ASA object names
+- *rmte_location:* VPN remote site name that is used in the Azure object names
 - *rmte_public_ip:* Public IP address of the remote site (ASA). By default this is hashed out and gathered automatically
 - *rmte_subnets:* Subnets of the networks at the remote site (behind the ASA)
-- *rmte_public_ip:* Public IP address of the cloud provider (Azure). By default this is hashed out and gathered automatically
-- *vn_addr_spc* List of address spaces (supernets) within the virtual network. This is used as the interesting traffic on the ASA
-- *cl_subnets:* Dictionary *{name: network/prefix}* of the subnets within the Azure Virtual Network. These are allowed through the ASA Outside ACL to filter access
+- *cld_public_ip:* Public IP address of the cloud provider (Azure). By default this is hashed out and gathered automatically
+- *vn_addr_spc* List of address spaces (supernets) within the virtual network (Azure). This is used as the interesting traffic on the ASA
+- *cl_subnets:* Dictionary of the subnets within the Azure Virtual Network. These are filtered through the ASA Outside ACL
 
 VPN encryption (AES), hashing (SHA) algorithms and PSK
-*p1_encr*
-*p1_hash*
-*dh*
-*p1_life*
-*p2_encr*
-*p2_hash*
-*pfs*
-*sa_life*
-*sa_size*
-*psk*
+- *p1_encr*
+- *p1_hash*
+- *dh*
+- *p1_life*
+- *p2_encr*
+- *p2_hash*
+- *pfs*
+- *sa_life*
+- *sa_size*
+- *psk*
 
 ### Running the playbook ###
-The playbook can be run with the following tags:
+The playbook can be run with any of the following tags:
 
-**--tag deploy:** Assumes that nothing is created. If not already existing it will createthe following.\
-AZ: *Resource_group, Public_ip, virtual_network, subnets, gateway_subnets, VPN_gateway, local_network_gateway, vpn_connection (and ipsec_policy)*\
-ASA: *ikev2_policy, ikev2_ipsec_proposal, crypto_map, interesting_traffic_ACL, outside_acl, nonat, tunnel-group*
+**--tag deploy:** Assumes that nothing is created. If not already existing it will create the following.\
+AZ: *resource_group, public_ip, virtual_network, subnets, gateway_subnets, VPN_gateway, local_network_gateway, vpn_connection, ipsec_policy*\
+ASA: *ikev2_policy, ikev2_ipsec_proposal, crypto_map, interesting_traffic_ACL, outside_acl, nonat, tunnel_group*
 
 **--tag destroy:** Only removes the configuration specific to to this VPN tunnel, so wont remove any of the AZ vnet/subnets or the ASA ikev2_policy/ipsec_proposal.\
-AZ: *Public_ip, local_network_gateway, VPN_gateway, vpn_connection (and ipsec_policy)*\
-ASA: *Crypto_map_100, ACLs, object-groups, nonat, tunnel-group*
+AZ: *public_ip, local_network_gateway, VPN_gateway, vpn_connection, ipsec_policy)*\
+ASA: *crypto_map, ACLs, object_groups, nonat, tunnel_group*
 
 **--tag vpn_down:**	Deletes the components to break the VPN (more importantly the elements that Azure bills you for).\
-AZ: *VPN_gateway, vpn_connection (including ipsec_policy)*\
-ASA: *Crypto_map_100 set peer, tunnel-group*
+AZ: *VPN_gateway, vpn_connection, ipsec_policy*\
+ASA: *crypto_map set peer, tunnel-group*
 
-**--tag vpn_up:** Brings backup the tunnel by adding back the components deleted by vpn_down and updating the local gateway incase the remote peer address had changed.\
-AZ: *VPN_gateway, vpn_connection (including ipsec_policy)*\
-ASA: *Crypto_map_100 set peer tunnel-group*
+**--tag vpn_up:** Brings backup the tunnel by adding back the components deleted by vpn_down and updating the local gateway incase the remote peer address has changed.\
+AZ: *VPN_gateway, vpn_connection, ipsec_policy*\
+ASA: *crypto_map set peer, tunnel_group*
 
 The interesting traffic and pre-shared key can be updated by re-running *deploy*.\
 The crypto algorithmns (*vpn-connection ipsec policy*) cannot be updated, to change these the vpn connection must be deleted (*vpn_down*) and added back (*vpn_up*).
