@@ -1,18 +1,19 @@
-# Create Site-to-site VPN to Azure
+# Create Site-to-site VPN - ASA to Azure
 
-Creates a route-based VPN with Policy Based Traffic Selectors (crypto-map not VTI) between a Cisco ASA and Azure.\
-The playbook is designed to be run from an Ansible host behind the ASA so it can automatically grab the local IP address to use in the creation of the VPN. This can be manually overridden by editing the variable *rm_public_ip*.\
-Azure is missing Ansible modules for creating the *Local Network Gateway* and *VPN Connection* so the playbook uses *AZ CLI* for these tasks.\
+Creates a route-based VPN with policy-based traffic selectors (crypto-map not VTI) between a Cisco ASA and Azure.\
+The playbook is designed to be run from an Ansible host behind the ASA as it automatically grabs the local IP address to use in the creation of the VPN. This can be manually overridden by editing the variable *rm_public_ip*.\
+Azure is missing Ansible modules for creating the *Local Network Gateway* and *VPN Connection* so the playbook uses *AZ CLI* for these tasks.
+
 The ASA credentials are defined under the **asa.yml** group_var and the Azure credentials in the **~/.azure/credentials** file (as described in Prerequisites)
 
 ### Versions
-ASA: Tested on ASA5505 running 9.2(4) and ASA5506 running 9.8(4)22
-Ansible: 2.8.4
+ASA: Tested on ASA5505 running 9.2(4) and ASA5506 running 9.8(4)22\
+Ansible: 2.8.4\
 Python: 3.6.9
 
 ### Prerequisites
-1. Install AZ CLI on the Ansible host
-*Ubuntu: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-apt?view=azure-cli-latest*
+1. Install AZ CLI on the Ansible host\
+*Ubuntu: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-apt?view=azure-cli-latest* \
 *RedHat: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-yum?view=azure-cli-latest*
 
 2. Create a Service Principal Credential Azure module authentication (2nd command tests it)
@@ -26,7 +27,7 @@ az login --service-principal --username APP_ID --password PASSWORD --tenant TENA
 az account show
 ```
 
-4. In the home directory of the Ansible host create an Azure directory and credentials file with these details:
+4. In the home directory of the Ansible host create an Azure directory and credentials file with the following details:
 ```css
 mkdir ~/.azure
 vi ~/.azure/credentials
@@ -44,46 +45,39 @@ pip install ansible[azure] --user
 ```
 
 ### Variables
-The varibles are split between three files:
+The varibles that are used in the playbook are split between three files:
 
 **asa.yml:** ASA specific variables
-*ansible_user:* ASA username
-*ansible_ssh_pass:* ASA password
-
-*vpn_index:* Index number used for the phase1 ikev2 policy and crypto-map
-*crypto_map:* Name of the crypto map
-*vpn_interface:* Interface used in NoNAT and what the ikev2 policy and crypto-map are associated to
-*outside_acl:* Name of Outside ACL limiting access from the indivudal subnets (no sysopt connection permit-vpn)
-
-*asa_vpn.acl:* Name of the VPN ACL
-*asa_vpn.local_grp:* Name of the object-group holding the ASA local networks
-*asa_vpn.az_vnet_grp:* Name of the object-group holding the Virtual Network s(supernet)
-*asa_vpn.az_subnet_grp:* Name of the object-group holding the Virtual Network subnets
+- *ansible_user:* ASA username
+- *ansible_ssh_pass:* ASA password
+- *vpn_index:* Index number used for the phase1 ikev2 policy and the crypto-map
+- *crypto_map:* Name of the crypto-map
+- *vpn_interface:* Interface used in the NoNAT statement aswell as what ikev2 policy and crypto-map are associated to
+- *outside_acl:* Name of the Outside ACL which is used for limiting access from the indivudal subnets (*no sysopt connection permit-vpn*)
+- *asa_vpn.acl:* Name of the VPN ACL
+- *asa_vpn.local_grp:* Name of the object-group that holds the networks local to the ASA
+- *asa_vpn.az_vnet_grp:* Name of the object-group that holds the Virtual Networks (supernets)
+- *asa_vpn.az_subnet_grp:* Name of the object-group that holds the Virtual Network subnets
 
 **azure.yml:** Azure specific variables
-*cl_region:*  Azure region in which to build VPN objects
-*rg_name:* Azure resource-group name
-
-*public_ip_name:* Name of the Azure public IP object. An ansible fact is automaticall created for this
-*vn_name:* Azure virtual-network name that holds the address spaces allowed over the VPN
-*gw_subnet_name:* Azure Gateway subnet name, like p-t-p link) between VPN gateway and the Virtual Network
-*gw_subnet_prfx:* Azure Gateway subnet network/prefix, like p-t-p link) between VPN gateway and the Virtual Network
-
-*cl_gateway:* Azure virtual network gateway name, binds all the Azurw VPN elements together (VNET, public IP)
-*rm_gateway:* Name of Azure object to group remote site publicIP and subnets (interesting traffic)
-*vpn_connection:* Azures VPN connection links Azure virtual network gateway and remote public IP and networks
+- *cld_region:*  Azure region in which to build all the VPN objects
+- *rg_name:* Azure resource-group name
+- *public_ip_name:* Name of the Azure public IP address object
+- *vn_name:* The Azure virtual-network name that holds the address spaces allowed over the VPN
+- *gw_subnet_name:* Azure gateway subnet name. It is the equivalent of a P-t-P link between VPN gateway and the Virtual Network
+- *gw_subnet_prfx:* Azure gateway subnet network/prefix
+- *cld_gateway:* Azure virtual network gateway name. The GW binds all the Azure VPN elements together (VNET and public IP)
+- *rmte_gateway:* Name of Azure object used to group the remote sites peer public IP address and subnets (interesting traffic)
+- *vpn_connection:* The Azure VPN connection links the Azure virtual network gateway and remote public IP and subnets
 
 **all.yml:** VPN variables such as interesting traffic, PSK, encryption and hashing algorithms
-*cl_provider:* Cloud provider name used in ASA object names
-*rm_location:* VPN remote end used to create cloud provider object names
-
-Remote-side VPN variables - Interesting traffic and public IP address
-*rm_public_ip:* Public IP address of the remote site (ASA). By default this is hashed out and got automatically
-*rm_subnets:* Subnets of the networks at the remote site *behind (ASA)
-
-Cloud-side VPN variables - Interesting traffic and peer
-*vn_addr_spc* List of address spaces (supernets) within the virtual network. Are used as the interesting traffic on the ASA
-*cl_subnets:* Dictionary {name: network/prefix } of the subnest within the Azure Virtual Network. Are allowed in the Outside ACL on the ASA
+*cld_provider:* Cloud provider name that is used in the ASA object names
+*rmte_location:* VPN remote site name that is used to create cloud provider object names
+- *rmte_public_ip:* Public IP address of the remote site (ASA). By default this is hashed out and gathered automatically
+- *rmte_subnets:* Subnets of the networks at the remote site (behind the ASA)
+- *rmte_public_ip:* Public IP address of the cloud provider (Azure). By default this is hashed out and gathered automatically
+- *vn_addr_spc* List of address spaces (supernets) within the virtual network. This is used as the interesting traffic on the ASA
+- *cl_subnets:* Dictionary *{name: network/prefix}* of the subnets within the Azure Virtual Network. These are allowed through the ASA Outside ACL to filter access
 
 VPN encryption (AES), hashing (SHA) algorithms and PSK
 *p1_encr*
