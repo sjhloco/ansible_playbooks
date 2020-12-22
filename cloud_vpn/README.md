@@ -77,20 +77,18 @@ The varibles that are used in the playbook are split between three files:
 - *rmte_public_ip:* Public IP address of the remote site (ASA). By default this is hashed out and gathered automatically
 - *rmte_subnets:* Subnets of the networks at the remote site (behind the ASA)
 - *cld_public_ip:* Public IP address of the cloud provider (Azure). By default this is hashed out and gathered automatically
-- *vn_addr_spc* List of address spaces (supernets) within the virtual network (Azure). This is used as the interesting traffic on the ASA
+- *vn_addr_spc:* List of address spaces (supernets) within the virtual network (Azure). This is used as the interesting traffic on the ASA
 - *cl_subnets:* Dictionary of the subnets within the Azure Virtual Network. These are filtered through the ASA Outside ACL
-
-VPN encryption (AES), hashing (SHA) algorithms and PSK
-- *p1_encr*
-- *p1_hash*
-- *dh*
-- *p1_life*
-- *p2_encr*
-- *p2_hash*
-- *pfs*
-- *sa_life*
-- *sa_size*
-- *psk*
+- *p1_encr:* Phase1 encryption algorithm
+- *p1_hash* Phase1 hashing (integrity) algorithm
+- *dh:* Phase1 Diffie-Hellman (DH) Group
+- *p1_life:* Phase1 SA lifetime (only applied on ASA)
+- *p2_encr:* Phase2 encryption algorithm
+- *p2_hash:* Phase2 hashing (integrity) algorithm
+- *pfs:* Phase2 Perfect Forward Secrecy (PFS) group
+- *sa_life:* Phase2 SA lifetime in seconds
+- *sa_size:* Phase2 SA lifetime in KiloBytes
+- *psk:* Pre-shared Key
 
 ### Running the playbook ###
 The playbook can be run with any of the following tags:
@@ -112,4 +110,5 @@ AZ: *VPN_gateway, vpn_connection, ipsec_policy*\
 ASA: *crypto_map set peer, tunnel_group*
 
 The interesting traffic and pre-shared key can be updated by re-running *deploy*.\
-The crypto algorithmns (*vpn-connection ipsec policy*) cannot be updated, to change these the vpn connection must be deleted (*vpn_down*) and added back (*vpn_up*).
+The crypto algorithmns (*vpn-connection ipsec policy*) cannot be updated, to change these the vpn connection must be deleted (*vpn_down*) and added back (*vpn_up*).\
+Everytime *deploy* or *vpn_up* the ASA tunnel-group will show that it has been changed as the PSK is hashed on the ASA so Ansible will always think it has changed
