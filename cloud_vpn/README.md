@@ -111,4 +111,4 @@ ASA: *crypto_map set peer, tunnel_group*
 
 The interesting traffic and pre-shared key can be updated by re-running *deploy*.\
 The crypto algorithmns (*vpn-connection ipsec policy*) cannot be updated, to change these the vpn connection must be deleted (*vpn_down*) and added back (*vpn_up*).\
-Everytime *deploy* or *vpn_up* the ASA tunnel-group will show that it has been changed as the PSK is hashed on the ASA so Ansible will always think it has changed
+Everytime *deploy* or *vpn_up* the ASA tunnel-group will show that it has been changed as the PSK is hashed on the ASA so Ansible will always think it has changed.
