@@ -2,19 +2,21 @@
 
 Creates a route-based VPN with policy-based traffic selectors (crypto-map not VTI) between a Cisco ASA and Azure.\
 The playbook is designed to be run from an Ansible host behind the ASA as it automatically grabs the local IP address to use in the creation of the VPN. This can be manually overridden by editing the variable *rm_public_ip*.\
-The interesting traffic for the VPN is the Azure Virtual Network with the subnets within that filtered on the ASA Outside ACL.\
+The interesting traffic for the VPN is the Azure Virtual Network with the subnets within that filtered on the ASA Outside ACL.
 
 Azure supports three types of VPN:
--IKEv2 route-based VPN using VTI - ASA9.8(1)+ with Azure configured for route-based VPN
--IKEv2 route-based VPN using crypto map - ASA8.2+ or later Azure be configured for route-based VPN with *Policy Based Traffic Selectors*
--IKEv1 policy-based VPN using crypto map - ASA8.2+ with Azure be configured for policy-based VPN
 
-This playbook can deploy either of the crypto-map VPNs, it cant deploy the VTI VPN. *Policy Based Traffic Selectors* require a SKU of standard or higher (VpnGw1/2/3) whereas policy-based can be SKU basic. The cost per month is roughly $100 for VpnGw1 compared to £20 for basic.
+- **IKEv2 route-based VPN using VTI -** ASA9.8(1)+ with Azure configured for route-based VPN
+- **IKEv2 route-based VPN using crypto map -** ASA8.2+ or later Azure be configured for route-based VPN with *Policy Based Traffic Selectors*
+- **IKEv1 policy-based VPN using crypto map -** ASA8.2+ with Azure be configured for policy-based VPN
+
+This playbook can deploy either of the crypto-map VPNs, <mark>it can't deploy the VTI VPN</mark>.\
+*Policy Based Traffic Selectors* (route-based) requires a SKU of standard or higher (*VpnGw1/2/3*) whereas policy-based can be SKU basic. The cost per month is roughly $100 for VpnGw1 compared to £20 for basic.
 
 Azure is missing Ansible modules for creating the *Local Network Gateway* and *VPN Connection* so the playbook uses *AZ CLI* for these tasks.
 *azure_rm_virtualnetworkgateway* doesn't support *SKU Basic* (think can in collections) so for policy-based VPNs have to again use *AZ CLI*.
 
-The ASA credentials are defined under the **all.yml** group_var and the Azure credentials in the **~/.azure/credentials** file (as described in Prerequisites)
+The ASA credentials are defined under the **all.yml** group_var and the Azure credentials in the **~/.azure/credentials** file (as described in prerequisites)
 
 ### Versions
 ASA: Tested on ASA5505 running 9.2(4) and ASA5506 running 9.8(4)22\
@@ -58,6 +60,7 @@ pip install ansible[azure] --user
 The variables that are used in the playbook are split into three sections:
 
 **ASA specific variables**
+
 - *ansible_user:* ASA username
 - *ansible_ssh_pass:* ASA password
 - *vpn_index:* Index number used for the phase1 ikev2 policy and the crypto-map
@@ -70,6 +73,7 @@ The variables that are used in the playbook are split into three sections:
 - *asa_vpn.az_subnet_grp:* Name of the object-group that holds the remote cloud Virtual Network subnets
 
 **Azure specific variables**
+
 - *cld_region:*  Azure region in which to build all the VPN objects
 - *rg_name:* Azure resource-group name
 - *public_ip_name:* Name of the Azure public IP address object
@@ -81,7 +85,8 @@ The variables that are used in the playbook are split into three sections:
 - *vpn_connection:* The Azure VPN connection links the Azure virtual network gateway and remote public IP and subnets
 
 **VPN Variables for both ASA and Azure** (interesting traffic, PSK, encryption and hashing algorithms)
--*tunnel_type:* policy-based uses IKEv1 (SKU Basic) whereas route_based uses IKEv2 (SKU VpnGw1)
+
+- *tunnel_type:* policy-based uses IKEv1 (SKU Basic) whereas route_based uses IKEv2 (SKU VpnGw1)
 - *cld_provider:* Cloud provider name that is used in the ASA object names
 - *rmte_location:* VPN remote site name that is used in the Azure object names
 - *rmte_public_ip:* Public IP address of the remote site (ASA). By default this is hashed out and gathered automatically
