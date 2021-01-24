@@ -15,7 +15,7 @@
 - block:
   - name: NET >> Checking existing VPN config on the ASA
     asa_command:
-      commands: "show run | inc {{ cld_provider.upper() }}|{{ crypto_map }} 100|{{ hostvars.localhost.cld_public_ip }} type ipsec-l2l"
+      commands: "show run | inc {{ cld_provider.upper() }}|{{ crypto_map }} {{ vpn_index }}_|policy {{ vpn_index }}_|{{ hostvars.localhost.cld_public_ip }} type ipsec-l2l"
     register: raw_config
   # Temp file to store the generated config
   - file: path=/tmp/config state=directory
@@ -28,7 +28,8 @@
 - block:
   - name: NET >> Generating VPN config to be deleted
     copy:
-      content: "{{ raw_config.stdout|delete_vpn(vpn_interface, outside_acl, vpn_index, crypto_map, hostvars.localhost.cld_public_ip, asa_vpn, pfs, p2_encr, sa_life, sa_size) }}"
+      content: "{{ raw_config.stdout|delete_vpn(cld_provider, vpn_interface, outside_acl, vpn_index, crypto_map, hostvars.localhost.cld_public_ip, asa_vpn, pfs |default(''),
+                p2_encr, p2_hash, sa_life, sa_size) }}"
       dest: /tmp/config/{{ inventory_hostname }}.cfg
     delegate_to: localhost
   - name: NET >> Deleting VPN config

@@ -1,11 +1,9 @@
 ---
 - name: Azure to ASA site-to-site VPN
   hosts: localhost
-  vars_files:
-    - vars/azure.yml
 
   tasks:
-  # 1. Get remote end (non-cloud) public IP adddress
+  # 1. Get remote end (non-cloud) public IP address
   - name: SYS >> Getting local Public IP address
     ipify_facts:
     check_mode: no
