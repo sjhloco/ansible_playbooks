@@ -7,7 +7,7 @@ The interesting traffic for the VPN is the Azure Virtual Network with the subnet
 Azure supports three types of VPN:
 
 - **IKEv2 route-based VPN using VTI -** ASA9.8(1)+ with Azure configured for route-based VPN
-- **IKEv2 route-based VPN using crypto map -** ASA8.2+ or later Azure be configured for route-based VPN with *Policy Based Traffic Selectors*
+- **IKEv2 route-based VPN using crypto map -** ASA8.2+ with Azure be configured for route-based VPN and Policy Based Traffic Selectors
 - **IKEv1 policy-based VPN using crypto map -** ASA8.2+ with Azure be configured for policy-based VPN
 
 This playbook can deploy either of the crypto-map VPNs, <mark>it can't deploy the VTI VPN</mark>.\
