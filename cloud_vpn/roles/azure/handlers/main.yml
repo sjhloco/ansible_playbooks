@@ -1,4 +1,0 @@
-# Logs out of AZ CLI
-- name: AZ >> AZ CLI logout
-  listen: az_logout
-  command: az logout

@@ -1,5 +1,0 @@
-# Print the output of any commands, even in checkmode when not appleid to ASA
-- name: SYS >> Print VPN config changes
-  listen: vpn_config
-  debug:
-      var: vpn_config.updates
