@@ -1,4 +1,4 @@
 ---
 # Uses transport of SSH
-ansible_network_os: cisco.ios.ios
+ansible_network_os: ios # didnt use cisco.ios.ios as napalm doesn't support
 ansible_connection: ansible.netcommon.network_cli

@@ -1,9 +1,8 @@
 # Backup Configurations
 
-Originally created using Ansible networking command modules (backup_with_cmd_mod.yml) but edited to use NAPALM as a lot more scalable (backup_with_napalm.yml).
-Should use NAPALM playbook, original one only kept for reference.
+Text-based running configs backups using `ansible.netcommon.cli_backup`, seems a better option than OS type backups, Napalm backups still work, but these days doesnt really seem developed/supported and `ansible_network_os` must be shorthand (not FQDN).
 
-Tested on NXOS, IOS, ASA and F5s.
+Tested on NXOS, IOS and EOS (ASA and F5s not tested on newer Ansible releases)
 
 The order of operation is:
 1. Create new temp directory

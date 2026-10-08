@@ -1,3 +1,4 @@
 ---
-ansible_network_os: cisco.asa.asa
+# Need to enable API on ASA to work, not tested on latest ansible version
+ansible_network_os: asa
 ansible_connection: ansible.netcommon.network_cli

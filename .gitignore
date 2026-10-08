@@ -1,3 +1,4 @@
 hosts
 .DS_Store
+.venv
 

@@ -3,14 +3,13 @@
 - name: "Creating file structure"
   hosts: localhost
   tasks:
-    # Create a date fact (variable) to be used in the name stored config file
+    # Create a date fact (variable) to be used in the GIT message
     - name: SYS >> Get ansible date/time facts
       setup:
         filter: "ansible_date_time"
     - name: SYS >> Store Date in a Fact
       set_fact:
         DATE: "{{ ansible_facts.date_time.date }}"
-
     # Clone a remote repo to save the config output in
     - name: GIT >> Clone private repo into /tmp
       git:
@@ -20,26 +19,50 @@
         single_branch: true # Clone just one branch
         depth: 1
 
-# Create copy of text-based  running configs and save to file in /tmp
+# Create copy of text-based running configs and save to file in /tmp
 - name: "Backing up Devices"
-  hosts: ISP1
+  hosts: WAN1:ISP1
   tasks:
     - name: "NET >> Backup running configs"
       ansible.netcommon.cli_backup:
-        filename: "{{ inventory_hostname }}_{{hostvars.localhost.DATE}}.cfg"
+        filename: "{{ inventory_hostname }}.cfg"
         dir_path: "{{ repo_path }}/backup_configs/configs/"
-# Commit and push changes to it and cleanup file directory
-# - name: "Cleaning up directory"
-#   hosts: localhost
-#   tasks:
-#     - name: GIT >> Commit and push changes
-#       shell: |
-#         cd /tmp/ip_auto_lab
-#         git add .
-#         git commit -m "Config backups by Ansible {{hostvars.localhost.DATE}}"
-#         git push
 
-#     - name: "SYS >> Delete the directory"
-#       file:
-#         path: "/tmp/ip_auto_lab"
-#         state: absent
+# Commit and push changes to it and cleanup file directory
+- name: Push config backups to git and cleanup
+  hosts: localhost
+  tasks:
+    # First check if anything has changed
+    - name: GIT >> Check for changes
+      ansible.builtin.command:
+        cmd: git status --porcelain
+        chdir: "{{ repo_path }}"
+      register: git_status
+      changed_when: false # So play doesn't never marks task as changed
+    # If changed then commit and push changes to the repo
+    - name: GIT >> Commit and push backups
+      when: git_status.stdout | length > 0
+      block:
+        - name: GIT >> Stage changes
+          ansible.builtin.command:
+            cmd: git add --all
+            chdir: "{{ repo_path }}"
+        - name: GIT >> Commit
+          ansible.builtin.command:
+            cmd: git commit -m "Config backups by Ansible {{ hostvars.localhost.DATE }}"
+            chdir: "{{ repo_path }}"
+          environment:
+            GIT_AUTHOR_NAME: Ansible
+            GIT_AUTHOR_EMAIL: ansible@lab.local
+            GIT_COMMITTER_NAME: Ansible
+            GIT_COMMITTER_EMAIL: ansible@lab.local
+        - name: GIT >> Push
+          ansible.builtin.command:
+            cmd: git push origin HEAD
+            chdir: "{{ repo_path }}"
+
+    # Cleanup the directory
+    - name: "SYS >> Delete the directory"
+      file:
+        path: "{{ repo_path }}"
+        state: absent

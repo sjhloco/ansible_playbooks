@@ -2,14 +2,5 @@
 git_repo: https://github.com/sjhloco/ansible_playbooks.git
 repo_path: /tmp/ansible_playbooks
 
-# Creds for backup_with_cmd_mod.yml
 ansible_user: admin
 ansible_password: admin
-# Creds for backup_with_napalm.yml
-creds_all:
-  hostname: "{{ ansible_host | default(inventory_hostname) }}"
-  username: admin
-  password: admin
-
-commands:
-  - show running-config

@@ -1,3 +1,3 @@
 ---
-ansible_network_os: cisco.nxos.nxos
+ansible_network_os: nxos # didnt use cisco.nxos.nxos as napalm doesn't support
 ansible_connection: ansible.netcommon.network_cli
