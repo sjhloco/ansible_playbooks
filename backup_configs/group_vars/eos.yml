@@ -1,0 +1,5 @@
+# Uses transport of API
+ansible_network_os: arista.eos.eos
+ansible_connection: httpapi
+ansible_httpapi_use_ssl: true
+ansible_httpapi_validate_certs: false

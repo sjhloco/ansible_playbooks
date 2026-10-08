@@ -1,0 +1,45 @@
+---
+# This playbook backs up the device configurations to a remote git repo
+- name: "Creating file structure"
+  hosts: localhost
+  tasks:
+    # Create a date fact (variable) to be used in the name stored config file
+    - name: SYS >> Get ansible date/time facts
+      setup:
+        filter: "ansible_date_time"
+    - name: SYS >> Store Date in a Fact
+      set_fact:
+        DATE: "{{ ansible_facts.date_time.date }}"
+
+    # Clone a remote repo to save the config output in
+    - name: GIT >> Clone private repo into /tmp
+      git:
+        repo: "{{ git_repo }}"
+        version: master
+        dest: "{{ repo_path }}"
+        single_branch: true # Clone just one branch
+        depth: 1
+
+# Create copy of text-based  running configs and save to file in /tmp
+- name: "Backing up Devices"
+  hosts: ISP1
+  tasks:
+    - name: "NET >> Backup running configs"
+      ansible.netcommon.cli_backup:
+        filename: "{{ inventory_hostname }}_{{hostvars.localhost.DATE}}.cfg"
+        dir_path: "{{ repo_path }}/backup_configs/configs/"
+# Commit and push changes to it and cleanup file directory
+# - name: "Cleaning up directory"
+#   hosts: localhost
+#   tasks:
+#     - name: GIT >> Commit and push changes
+#       shell: |
+#         cd /tmp/ip_auto_lab
+#         git add .
+#         git commit -m "Config backups by Ansible {{hostvars.localhost.DATE}}"
+#         git push
+
+#     - name: "SYS >> Delete the directory"
+#       file:
+#         path: "/tmp/ip_auto_lab"
+#         state: absent

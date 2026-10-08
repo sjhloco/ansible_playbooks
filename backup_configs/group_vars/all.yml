@@ -1,9 +1,15 @@
 ---
-git_repo: git@github.com:sjhloco/ip_auto_lab.git
-repo_path: /tmp/ip_auto_lab
-ansible_python_interpreter: "/usr/bin/python3.7" 
+git_repo: https://github.com/sjhloco/ansible_playbooks.git
+repo_path: /tmp/ansible_playbooks
 
+# Creds for backup_with_cmd_mod.yml
+ansible_user: admin
+ansible_password: admin
+# Creds for backup_with_napalm.yml
 creds_all:
-  hostname: "{{ ansible_host|default(inventory_hostname) }}"
+  hostname: "{{ ansible_host | default(inventory_hostname) }}"
   username: admin
-  password: ansible
+  password: admin
+
+commands:
+  - show running-config
