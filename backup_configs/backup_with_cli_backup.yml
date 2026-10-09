@@ -5,14 +5,14 @@
   tasks:
     # Create a date fact (variable) to be used in the GIT message
     - name: SYS >> Get ansible date/time facts
-      setup:
+      ansible.builtin.setup:
         filter: "ansible_date_time"
     - name: SYS >> Store Date in a Fact
-      set_fact:
-        DATE: "{{ ansible_facts.date_time.date }}"
+      ansible.builtin.set_fact:
+        date: "{{ ansible_facts.date_time.date }}"
     # Clone a remote repo to save the config output in
     - name: GIT >> Clone private repo into /tmp
-      git:
+      ansible.builtin.git:
         repo: "{{ git_repo }}"
         version: master
         dest: "{{ repo_path }}"
@@ -47,10 +47,12 @@
           ansible.builtin.command:
             cmd: git add --all
             chdir: "{{ repo_path }}"
+          changed_when: true
         - name: GIT >> Commit
           ansible.builtin.command:
-            cmd: git commit -m "Config backups by Ansible {{ hostvars.localhost.DATE }}"
+            cmd: git commit -m "Config backups by Ansible {{ hostvars.localhost.date }}"
             chdir: "{{ repo_path }}"
+          changed_when: true
           environment:
             GIT_AUTHOR_NAME: Ansible
             GIT_AUTHOR_EMAIL: ansible@lab.local
@@ -60,9 +62,10 @@
           ansible.builtin.command:
             cmd: git push origin HEAD
             chdir: "{{ repo_path }}"
+          changed_when: true
 
     # Cleanup the directory
     - name: "SYS >> Delete the directory"
-      file:
+      ansible.builtin.file:
         path: "{{ repo_path }}"
         state: absent

@@ -1,0 +1,4 @@
+---
+skip_list:
+  # git add/commit/push have no equivalent in ansible.builtin.git
+  - command-instead-of-module

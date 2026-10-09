@@ -1,4 +1,6 @@
 hosts
 .DS_Store
 .venv
-
+.vscode
+.ansible
+.claude
