@@ -1,0 +1,16 @@
+all:
+  children:
+    router:
+      children:
+        arista:
+          vars:
+            ansible_network_os: arista.eos.eos
+          hosts:
+            ISP1:
+              ansible_host: 192.168.250.11
+        cisco:
+          vars:
+            ansible_network_os: cisco.ios.ios
+          hosts:
+            WAN1:
+              ansible_host: 192.168.250.31

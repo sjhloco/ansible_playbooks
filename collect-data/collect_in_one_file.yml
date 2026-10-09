@@ -5,20 +5,21 @@
 - name: "SYS >> Create the file structure"
   hosts: localhost
   tasks:
-  - file: path="/tmp/results" state=absent
-  - file: path="/tmp/results" state=directory
+    - ansible.builtin.file: path="/tmp/results" state=absent # noqa: name[missing] no-free-form
+    - ansible.builtin.file: path="/tmp/results" state=directory # noqa: name[missing] no-free-form risky-file-permissions
 
-# Runs show cmds using list of cmds from group_vars 
-- hosts: cisco     # Runs on all hosts in cisco or asa group
+# Runs show cmds using list of cmds from group_vars
+- name: Run commands
+  hosts: router # Runs on all hosts in cisco or asa group
   tasks:
-  - name: "NET >> Run device show cmds"
-    ios_command: 
-      commands: "{{ commands }}"   
-    register: cli_output
-
-  # Uses jinja2 template to create one file of all outputs on a per-host basis
-  - name: "NET >> Save Host Outputs"
-    template:
-      src: ios_outputs.j2
-      dest: "/tmp/results/{{inventory_hostname}}.txt" 
-    delegate_to: localhost
+    - name: "NET >> Run device show cmds"
+      ansible.netcommon.cli_command:
+        command: "{{ item }}"
+      loop: "{{ commands }}"
+      register: cli_output
+    # Uses jinja2 template to create one file of all outputs on a per-host basis
+    - name: "NET >> Save Host Outputs"
+      ansible.builtin.template: # noqa: risky-file-permissions
+        src: ios_outputs.j2
+        dest: "/tmp/results/{{ inventory_hostname }}.cfg"
+      delegate_to: localhost

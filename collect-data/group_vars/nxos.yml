@@ -3,4 +3,3 @@ commands:
   - show version
   - show ip int brief
   - show ip arp
-...
