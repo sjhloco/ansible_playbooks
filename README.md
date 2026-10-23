@@ -11,7 +11,7 @@ Contains all playbooks created for small tasks
     \- *backup_with_napalm.yml*: Backup IOS, EOS and NXOS using napalm (not sure if ASAs or F5 still work)
 
 3. create_vlan \
-    \- *playbook_create_vlans.yml*: Build and verify VLANs on IOS
+    \- *playbook_create_vlans.yml*: Build and verify VLANs on IOS, EOS and NXOS
 
 4. network_state_report \
     \- *playbook_main.yml*: Generates tables of device state (asa, nxos, ios, bigip) for network elements (Interfaces, MACs, ARPs, VPN, OSPF, BGP) and builds a report
