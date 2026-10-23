@@ -1,12 +1,4 @@
 ---
-os: ios      
-
-vlans: 
-- vlan: 201
-  name: test201
-- vlan: 202
-  name: test202  
-- vlan: 203
-  name: test203
-- vlan: 204
-  name: test204   
+# Uses transport of SSH
+ansible_network_os: cisco.ios.ios
+ansible_connection: ansible.netcommon.network_cli

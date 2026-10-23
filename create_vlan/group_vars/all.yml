@@ -1,8 +1,15 @@
 ---
-ansible_python_interpreter: "/usr/bin/python3.7" 
 config_dir: ~/configs
 
-creds_all:
-  hostname: "{{ ansible_host|default(inventory_hostname) }}"
-  username: admin
-  password: ansible
+ansible_user: admin
+ansible_password: admin
+
+vlans:
+  - vlan_id: 201
+    name: test201
+  - vlan_id: 202
+    name: test202
+  - vlan_id: 203
+    name: test203
+  - vlan_id: 204
+    name: test204

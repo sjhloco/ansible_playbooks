@@ -1,88 +1,79 @@
 ---
 # This playbook creates VLANs on IOS devices
-
 - name: "Create VLANs"
-  hosts: dc1-vios-sw1
-  connection: local
-# Create the file structure, all run in check mode and dont report changes to Ansible.
-  pre_tasks: 
-  - name: "SYS >> Create the file structure"
-    block:
-    - set_fact: host_tmpdir="{{ config_dir }}/{{ inventory_hostname }}"
-      changed_when: false 
-    - file: path="{{ host_tmpdir }}" state=absent
-      changed_when: false  
-    - file: path="{{ host_tmpdir }}" state=directory
-      changed_when: false
-    - name: "NET >> Get the pre-check VLAN info"
-      napalm_cli:
-        provider: "{{ creds_all }}"
-        dev_os: "{{ os }}"
-        args:
-          commands:
-            - show vlan
-      register: output
-      changed_when: false 
-# Gets current device VLANs. ntc-template is in playbook template folder and is used to create structured data which is passed through custom filters (python)
-    - name: "SYS >> Display Current VLAN Info"
-      set_fact:     
-        before_num_vlans: "{{ output.cli_results['show vlan'] | parse_cli_textfsm('templates/cisco_ios_show_vlan.template') | num_vlans }}"
-        before_dev_vlans: "{{ output.cli_results['show vlan'] | parse_cli_textfsm('templates/cisco_ios_show_vlan.template') | dev_vlans }}"
-      changed_when: false         
-    - debug: 
-        msg: "Are {{ before_num_vlans }} VLANs in total which are {{ before_dev_vlans }}"
-      changed_when: false 
-    check_mode: no
+  hosts: L2-SW1
+  # 1. Create a new fresh file structure (clears any files from previous playbook runs), don't report changes to Ansible.
+  pre_tasks:
+    - name: "SYS >> Create the file structure"
+      check_mode: false # Always run this task for real, even when the playbook runs with -C
+      block:
+        - ansible.builtin.set_fact: host_tmpdir="{{ config_dir }}/{{ inventory_hostname }}" # noqa: name[missing] no-free-form
+        - ansible.builtin.file: path="{{ host_tmpdir }}" state=absent # noqa: name[missing] no-free-form
+          changed_when: false # Forces the task to report ok instead of changed, whatever the module says.
+        - ansible.builtin.file: path="{{ host_tmpdir }}" state=directory # noqa: name[missing] no-free-form risky-file-permissions
+          changed_when: false
+        # 2. Gets current device VLANs and passes these through custom filters (python) to get count of VLANs and a dict of all non-default VLANs ({id: name})
+        - name: "NET >> Get the pre-check VLAN info"
+          ansible.netcommon.network_resource:
+            name: vlans
+            state: gathered
+          register: output
+        - name: "SYS >> Display Current VLAN Info"
+          ansible.builtin.set_fact:
+            before_num_vlans: "{{ output['gathered'] | num_vlans }}"
+            before_device_vlans: "{{ output['gathered'] | device_vlans }}"
+        - ansible.builtin.debug: # noqa: name[missing]
+            msg: "Are {{ before_num_vlans }} VLANs in total which are {{ before_device_vlans }}"
 
-# Build and apply the configuration for the new VLANs
+  # 3. Declaratively creates the new VLANs using Resource module, `ansible.netcommon.network_resource` abstracts OS in the one play
   tasks:
-  - name: "SYS >> Create the configuration"
-    template:
-      src: create_vlan.j2
-      dest: "{{ host_tmpdir }}/vlan.cfg"
-    check_mode: no  
-  - name: "NET >> Apply the configuration"
-    napalm_install_config:
-      provider: "{{ creds_all }}"
-      dev_os: "{{ os }}"
-      config_file: "{{ host_tmpdir }}/vlan.cfg"
-      commit_changes: true
-      replace_config: false
-      get_diffs: true
-      diff_file: "{{ host_tmpdir }}/diff"     # stores a copy of the differences
-    register: changes
-  - debug: var=changes.msg.splitlines() 
-    changed_when: false
-    check_mode: no
-    when: changes.msg != ""          # Only printed if change is made
-  - debug: msg="No changes to make"
-    changed_when: false
-    check_mode: no  
-    when: changes.msg == ""          # Only printed if change is not made
+    - name: "NET >> Apply the configuration"
+      ansible.netcommon.network_resource:
+        name: vlans
+        state: merged
+        config: "{{ vlans }}"
+      register: result
+    # Just prints the commands to be run
+    - name: SYS >> Print expected outcome of the change
+      ansible.builtin.debug: var=result["commands"] # noqa: no-free-form
+      check_mode: false
+      when: ansible_check_mode
+    # When changes are made prints the before/after config difference
+    - name: SYS >> Print before/after diff
+      ansible.utils.fact_diff:
+        before: "{{ result['before'] }}"
+        after: "{{ result['after'] | default(result['before']) }}"
 
-# Only run if a change is made. Validates that the number of VLANs on the device matches what is expected after new ones have been added
+  # 4. Post-checks only run if a change was really made (check mode reports changed but applies nothing)
   post_tasks:
-  - name: "NET >> Get the post-check VLAN info"
-    block:
-    - napalm_cli:
-        provider: "{{ creds_all }}"
-        dev_os: "{{ os }}"
-        args:
-          commands:
-            - show vlan
-      register: output
-      changed_when: false      
-    - set_fact:
-        after_num_vlans: "{{ output.cli_results['show vlan'] | parse_cli_textfsm('templates/cisco_ios_show_vlan.template') | num_vlans }}"
-        after_dev_vlans: "{{ output.cli_results['show vlan'] | parse_cli_textfsm('templates/cisco_ios_show_vlan.template') | dev_vlans }}"
-      changed_when: false
-    - debug: var=after_dev_vlans 
-      changed_when: false    
-    # Assert that the new number of vlans is old number + number from variables that where added
-    - assert:
-        that:       # Need to convert to integrars to compare the values
-          - ({{ before_num_vlans | int }} + {{ vlans | length }}) == {{ after_num_vlans | int }}
-        msg: "Number of VLANs doesnt match what is expected"
-      changed_when: false        
-    when: changes.msg != ""
-    # Could add another assert statement to make sure the VLAN names mathh what they are meant to be
+    - name: "SYS >> Post-change validation"
+      when: result is changed and not ansible_check_mode # noqa: no-handler
+      block:
+        # Gathers the device VLANs and passes results through filter plugin
+        - name: "NET >> Get the post-check VLAN info"
+          ansible.netcommon.network_resource:
+            name: vlans
+            state: gathered
+          register: output
+        - name: "SYS >> Display Current VLAN Info"
+          ansible.builtin.set_fact:
+            after_num_vlans: "{{ output['gathered'] | num_vlans }}"
+            after_device_vlans: "{{ output['gathered'] | device_vlans }}"
+        - ansible.builtin.debug: var=after_device_vlans # noqa: name[missing] no-free-form
+        # Validates that the number of VLANs on the device matches what is expected
+        - name: "SYS >> Check got expected number of VLANs"
+          ansible.builtin.assert:
+            that:
+              - (before_num_vlans | int) + (vlans | length) == after_num_vlans | int
+            fail_msg: "Expected ({{ before_num_vlans | int }} + {{ vlans | length }}) VLANs but got {{ after_num_vlans | int }}"
+        # Validates the naming and number of VLANs on device matches input data
+        - name: "SYS >> Each VLAN exists with the right name"
+          ansible.builtin.assert:
+            that:
+              - item['vlan_id'] in after_device_vlans
+              - after_device_vlans[item['vlan_id']] == item['name']
+            fail_msg: "VLAN {{ item['vlan_id'] }} missing or wrong name"
+            quiet: true
+          loop: "{{ vlans }}"
+          loop_control:
+            label: "{{ item['vlan_id'] }}"
