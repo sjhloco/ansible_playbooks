@@ -1,0 +1,32 @@
+---
+# This role uses genie parsers to get the data structure
+- name: BLK >> Gather and parse all outputs
+  tags: [l2]
+  block:
+    - name: "NET >> Gathering and parsing outputs"
+      ansible.utils.cli_parse:
+        command: "{{ item }}"
+        parser:
+          name: ansible.netcommon.pyats
+      loop: "{{ l2_cmds }}" # Loops cmds from group_vars
+      register: l2_output
+
+    - name: "SYS >> Build dict of {command: parsed data}" # Filter needs a dict of {command: parsed output}
+      ansible.builtin.set_fact:
+        l2_genie: >-
+          {{ dict(l2_output.results | map(attribute='item')
+          | zip(l2_output.results | map(attribute='parsed'))) }}
+
+    - name: "SYS >> Passing through Python Filter"
+      ansible.builtin.set_fact:
+        l2_table: "{{ l2_genie | l2_filter(inventory_hostname, ansible_network_os.split('.')[-1]) }}"
+      changed_when: false
+
+# Creates localhost_fact that is a list of all other host_facts (lists)
+- name: "SYS >> Creating nested list of all outputs"
+  ansible.builtin.set_fact:
+    l2_tables_list_table: "{{ ansible_play_hosts | map('extract', hostvars, 'l2_table') | list }}"
+  run_once: true
+  delegate_to: localhost
+  delegate_facts: true # What makes it a localhost_fact
+  tags: [l2]

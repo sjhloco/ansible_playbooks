@@ -1,0 +1,24 @@
+---
+# Had to use Ansible command module as couldnt use | include with NAPALM API based connections
+- name: BLK >> Gathering all outputs
+  tags: [l3]
+  block:
+    - name: "NET >> Gathering all outputs"
+      ansible.netcommon.cli_command:
+        command: "{{ item }}" # Loops cmds from host_var
+      register: l3_table_output
+      loop: "{{ l3_cmds }}"
+
+    - name: "SYS >> Passing through Python Filter"
+      ansible.builtin.set_fact: # Passes output through filter
+        l3_table: "{{ l3_table_output['results'] | l3_filter(inventory_hostname) }}"
+      changed_when: false
+
+# Creates localhost_fact that is a list of all other host_facts (lists)
+- name: "SYS >> Creating nested list of all outputs"
+  ansible.builtin.set_fact:
+    l3_tables_list_table: "{{ ansible_play_hosts | map('extract', hostvars, 'l3_table') | list }}"
+  run_once: true
+  delegate_to: localhost
+  delegate_facts: true # What makes it a localhost_fact
+  tags: [l3]

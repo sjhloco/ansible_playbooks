@@ -1,18 +1,18 @@
 ---
 # Connection Variables
-os: asa                         # Napalm
-ansible_network_os: asa         # Ansible
+ansible_network_os: cisco.asa.asa
+ansible_connection: ansible.netcommon.network_cli
 
 # Commands used inthe various roles
-edge_cmds:                                # edge role
+edge_cmds: # edge role
   - show xlate count
   - show vpn-sessiondb l2l
-itf_cmds:                                # Interfaces role
+itf_cmds: # Interfaces role
   - interfaces
-l3_cmds:                                # Layer3 role
+l3_cmds: # Layer3 role
   - show arp statistics | in ASA
   - show route | in via|directly
-ospf_cmds:                                # OSPF role
+ospf_cmds: # OSPF role
   - show ospf neighbor | include FULL
   - show ospf database database-summary | in Total
 

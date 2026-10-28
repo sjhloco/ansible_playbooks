@@ -1,58 +1,41 @@
 ---
-- block:
-  - name: "NET >> Gather NXOS output"
-    napalm_get_facts:
-      provider: "{{ creds_all }}"
-      dev_os: "{{ os }}"
-      filter:
-        - "bgp_neighbors"
-    register: bgp_output
-
-  - name: "SYS >> Pass through Python Filter"
-    set_fact:     # Passes output through filter with bgp_neigh variable
-      bgp_table: "{{ bgp_output.ansible_facts | bgp_filter(inventory_hostname, bgp_neigh) }}"
-    changed_when: False
+- name: BLK >> Gather NXOS output
   tags: [bgp]
-  when: os == 'nxos'
+  when: ansible_network_os == 'cisco.nxos.nxos'
+  block:
+    - name: "NET >> Gather NXOS output"
+      napalm.napalm.napalm_get_facts:
+        dev_os: "{{ ansible_network_os.split('.')[-1] }}"
+        filter:
+          - "bgp_neighbors"
+      register: bgp_output
+    - name: "SYS >> Pass through Python Filter"
+      ansible.builtin.set_fact: # Passes output through filter with bgp_neigh variable
+        bgp_table: "{{ bgp_output.ansible_facts | bgp_filter(inventory_hostname, bgp_neigh) }}"
+      changed_when: false
 
-# NAPALM get_bgp_neighbors doesnt work with csr1000v so alternative method
-- block:
-  - name: "NET >> Get IOSXE output"
-    napalm_cli:
-      provider: "{{ creds_all }}"
-      dev_os: "{{ os }}"
-      args:
-        commands: 
-        - show bgp all summary
-    register: bgp_output
-
-  - name: SYS >> Read in parse_genie role
-    include_role:
-      name: clay584.parse_genie
-
-  - name: SYS >> Parse BGP
-    set_fact:
-      genie_bgp: "{{ bgp_output.cli_results['show bgp all summary'] | parse_genie(command='show bgp all summary', os=os) }}"
-
-  - name: "SYS >> Pass through Python Filter"
-    set_fact: # Passes output through filter with bgp_neigh variable
-      bgp_table:  "{{ genie_bgp | csr_bgp_filter(inventory_hostname, bgp_neigh) }}"
-    changed_when: False
+# NAPALM get_bgp_neighbors doesn't work with csr1000v so used PYATS instead
+- name: "BLK >> Get IOSXE output"
   tags: [bgp]
-  when: os == 'ios'
+  when: ansible_network_os == 'cisco.ios.ios'
+  block:
+    - name: "NET >> Gather IOSXE output"
+      ansible.utils.cli_parse:
+        command: show bgp all summary
+        parser:
+          name: ansible.netcommon.pyats
+          os: iosxe
+        set_fact: bgp_output
+    - name: "SYS >> Pass through Python Filter"
+      ansible.builtin.set_fact: # Passes output through filter with bgp_neigh variable
+        bgp_table: "{{ ansible_facts.bgp_output | csr_bgp_filter(inventory_hostname, bgp_neigh) }}"
+      changed_when: false
 
 # Creates localhost_fact that is a list of all other host_facts (lists)
 - name: "SYS >> Creating nested list of all outputs"
-  set_fact:   # Need if statement to stop errors wehn only one device as cant create list
-    list_bgp_table: |
-                    {% if bgp_table | length >= 2 %}
-                    {% set x = [] %}
-                    {% for host in ansible_play_hosts %}
-                    {% do x.append(hostvars[host].bgp_table) %}
-                    {% endfor %}
-                    {{ x|join(',') }}
-                    {% endif %}
-  run_once: once
+  ansible.builtin.set_fact:
+    bgp_list_table: "{{ ansible_play_hosts | map('extract', hostvars, 'bgp_table') | list }}"
+  run_once: true
   delegate_to: localhost
-  delegate_facts: True    # What makes it a localhost_fact
+  delegate_facts: true # What makes it a localhost_fact
   tags: [bgp]

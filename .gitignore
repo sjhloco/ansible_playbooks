@@ -5,3 +5,5 @@ hosts
 .ansible
 .claude
 __pycache__/
+.ruff_cache/
+*.log

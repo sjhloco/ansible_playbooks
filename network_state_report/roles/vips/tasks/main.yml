@@ -1,32 +1,27 @@
 ---
-- block:
-  - name: NET >> Collecting BIG-IP facts
-    bigip_device_facts:
-      gather_subset:
-        - virtual-servers
-        - ltm-pools
-      provider: "{{ creds_big_ip }}"
-    register: vip_output
-    delegate_to: localhost
-
-  - name: "SYS >> Passing through Python Filter"
-    set_fact:     # Passes output through filter 
-      vip_table: "{{ vip_output | vip_filter(inventory_hostname) }}"
-    changed_when: False
+- name: BLK >> Collect BIG-IP facts
   tags: [vip]
+  block:
+    - name: NET >> Collecting BIG-IP facts
+      # Not been tested since rework
+      f5networks.f5_modules.bigip_device_info:
+        gather_subset:
+          - virtual-servers
+          - ltm-pools
+        provider: "{{ creds_big_ip }}"
+      register: vips_output
+      delegate_to: localhost
+
+    - name: "SYS >> Passing through Python Filter"
+      ansible.builtin.set_fact: # Passes output through filter
+        vips_table: "{{ vips_output | vip_filter(inventory_hostname) }}"
+      changed_when: false
 
 # Creates localhost_fact that is a list of all other host_facts (lists)
 - name: "SYS >> Creating nested list of all outputs"
-  set_fact:     # Need if statement to stop errors wehn only one device as cant create list
-    list_vip_table: |
-                    {% if vip_table | length >= 2 %}
-                    {% set x = [] %}
-                    {% for host in ansible_play_hosts %}
-                    {% do x.append(hostvars[host].vip_table) %}
-                    {% endfor %}
-                    {{ x|join(',') }}
-                    {% endif %}
-  run_once: once
+  ansible.builtin.set_fact:
+    vips_list_table: "{{ ansible_play_hosts | map('extract', hostvars, 'vips_table') | list }}"
+  run_once: true
   delegate_to: localhost
-  delegate_facts: True    # What makes it a localhost_fact
+  delegate_facts: true # What makes it a localhost_fact
   tags: [vip]

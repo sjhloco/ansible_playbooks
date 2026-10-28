@@ -1,20 +1,19 @@
 ---
-ansible_python_interpreter: "/usr/bin/env python"          # Ubuntu
-
 # File structure variables
 tmp_path: ~/network_state/tmp_tables
 dir_path: ~/network_state
 
-# Connection Variables
-creds_all:                          # Napalm
-  hostname: "{{ ansible_host|default(inventory_hostname) }}"
-  username: admin
-  password: ansible
+# Device credentials
+ansible_user: admin
+ansible_password: admin
 
-ansible_user: admin                 # Ansible
-ansible_ssh_pass: ansible
+# Provider creds, needed for naplam.cli
+creds_all: # Napalm
+  hostname: "{{ ansible_host | default(inventory_hostname) }}"
+  username: "{{ ansible_user }}"
+  password: "{{ ansible_password }}"
 
-# Commands used inthe various roles
-itf_cmds:                                # Interfaces role
+# Commands used in the various roles
+itf_cmds: # Interfaces role
   - interfaces
   - lldp_neighbors

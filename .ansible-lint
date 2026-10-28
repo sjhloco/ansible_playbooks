@@ -1,4 +1,32 @@
 ---
+## Production is strictest and the default https://docs.ansible.com/projects/lint/profiles/
+profile: production
+## Uses collections already installed, faster, and it works without internet
+offline: true
+## Folders ansible-lint skips entirely
+exclude_paths:
+  - .venv/
+  - collections/ansible_collections/
+
+## Global exceptions, can use inline with # noqa: no-free-form
 skip_list:
-  # git add/commit/push have no equivalent in ansible.builtin.git
+  ## git add/commit/push have no equivalent in ansible.builtin.git
   - command-instead-of-module
+  ## No permissions when creating certain files (expects chmod)
+  - risky-file-permissions
+  ## One-line entries, for example debug: var=xx on the same line
+  # - no-free-form
+  ## No name for a playbook
+  # - name[play]
+  ## No name for a play
+  # - name[missing]
+
+## These rules appear as warnings but do not cause failure (first 3 are defaults)
+warn_list:
+  - experimental
+  - jinja[spacing]
+  - fqcn[deep]
+
+#### Useful cmds ####
+# ansible-lint -L                         List all rules (each is tagged)
+# ansible-lint --generate-ignore          Writes every current lint failure into a `.ansible-lint-ignore` file

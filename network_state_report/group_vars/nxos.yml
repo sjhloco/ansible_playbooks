@@ -1,17 +1,17 @@
 ---
 # Connection Variables
-os: nxos                         # Napalm
-ansible_network_os: nxos         # Ansible
+ansible_network_os: cisco.nxos.nxos # also works ansible_network_os: ios
+ansible_connection: ansible.netcommon.network_cli
 
 # Commands used inthe various roles
-l2_cmds:                                   # Layer2 role
+l2_cmds: # Layer2 role
   - show vlan
   - show port-channel summary
   - show mac address-table
 
-l3_cmds:                                  # Layer3 role
+l3_cmds: # Layer3 role
   - show ip arp summary vrf all | in Total
   - show ip route vrf all | in ubest|mbest
-ospf_cmds:                                # OSPF role
+ospf_cmds: # OSPF role
   - show ip ospf neighbor vrf all | include FULL
   - show ip ospf database database-summary vrf all | in Total

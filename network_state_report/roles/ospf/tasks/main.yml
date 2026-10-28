@@ -1,30 +1,24 @@
 ---
 # Had to use Ansible command module as couldnt use | include with NAPALM API based connections
-- block:
-  - name: "NET >> Gathering all outputs"
-    cli_command:
-      command: "{{ item }}"     # Loops cmds from host_var
-    register: ospf_output
-    loop: "{{ ospf_cmds }}"
-
-  - name: "SYS >> Passing through Python Filter"
-    set_fact:     # Passes output through filter with ospf_neigh variable
-      ospf_table: "{{ ospf_output['results'] | ospf_filter(inventory_hostname, ospf_neigh) }}"
-    changed_when: False
+- name: BLK >> Gathering all outputs
   tags: [ospf]
+  block:
+    - name: "NET >> Gathering all outputs"
+      ansible.netcommon.cli_command:
+        command: "{{ item }}" # Loops cmds from host_var
+      register: ospf_output
+      loop: "{{ ospf_cmds }}"
+
+    - name: "SYS >> Passing through Python Filter"
+      ansible.builtin.set_fact: # Passes output through filter with ospf_neigh variable
+        ospf_table: "{{ ospf_output['results'] | ospf_filter(inventory_hostname, ospf_neigh) }}"
+      changed_when: false
 
 # Creates localhost_fact that is a list of all other host_facts (lists)
 - name: "SYS >> Creating nested list of all outputs"
-  set_fact:     # Need if statement to stop errors wehn only one device as cant create list
-    list_ospf_table: |
-                    {% if ospf_table | length >= 2 %}
-                    {% set x = [] %}
-                    {% for host in ansible_play_hosts %}
-                    {% do x.append(hostvars[host].ospf_table) %}
-                    {% endfor %}
-                    {{ x|join(',') }}
-                    {% endif %}
-  run_once: once
+  ansible.builtin.set_fact:
+    ospf_list_table: "{{ ansible_play_hosts | map('extract', hostvars, 'ospf_table') | list }}"
+  run_once: true
   delegate_to: localhost
-  delegate_facts: True    # What makes it a localhost_fact
+  delegate_facts: true # What makes it a localhost_fact
   tags: [ospf]
